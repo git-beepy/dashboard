@@ -30,7 +30,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      // CORRIGIDO: Removido o '/api' duplicado da URL
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });
