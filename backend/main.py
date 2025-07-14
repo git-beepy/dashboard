@@ -26,9 +26,7 @@ def create_app():
         r"/api/*": {
             "origins": [
                 "http://localhost:5173",
-                "https://dashboard-git-main-git-beepys-projects.vercel.app",
-                "https://dashboard-2ypkri6e6-git-beepys-projects.vercel.app",
-                "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+                "https://dashboard-two-murex-93kzyvrvas.vercel.app"  # único domínio fixo da Vercel
             ]
         }
     }, supports_credentials=True)
