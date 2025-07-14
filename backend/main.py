@@ -3,7 +3,6 @@ import sys
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import bcrypt
@@ -22,7 +21,6 @@ def create_app():
     flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, supports_credentials=True)
 
     # Rotas de autenticação
     @flask_app.route("/api/auth/login", methods=["POST"])
