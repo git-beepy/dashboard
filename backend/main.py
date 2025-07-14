@@ -23,7 +23,7 @@ def create_app():
     jwt = JWTManager(flask_app)
     CORS(flask_app, origins=[
         "http://localhost:5173",
-        "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+        "https://dashboard-git-main-git-beepys-projects.vercel.app"
     ])
 
     # Rotas de autenticação
