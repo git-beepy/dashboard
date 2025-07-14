@@ -1,3 +1,4 @@
+// vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -13,7 +14,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0'
   },
-  base: './',
+  // base: './', // Remova ou comente esta linha
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
