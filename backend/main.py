@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import bcrypt
 
 # Inicializar Firebase
-cred = credentials.Certificate('projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json')
+cred = credentials.Certificate("projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -17,104 +17,102 @@ db = firestore.client()
 def create_app():
     flask_app = Flask(__name__)
 
-    flask_app.config['SECRET_KEY'] = 'beepy-secret-key-2024'
-    flask_app.config['JWT_SECRET_KEY'] = 'beepy-jwt-secret-key-2024'
-    flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    flask_app.config["SECRET_KEY"] = "beepy-secret-key-2024"
+    flask_app.config["JWT_SECRET_KEY"] = "beepy-jwt-secret-key-2024"
+    flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, resources={r"/api/*": {"origins": [ "http://localhost:5173", "https://dashboard-git-main-git-beepys-projects.vercel.app", "https://dashboard-two-murex-93kzyvrvas.vercel.app" ]}}, supports_credentials=True)
+    CORS(flask_app, resources={r"/api/*": {"origins": ["http://localhost:5173", "https://dashboard-git-main-git-beepys-projects.vercel.app", "https://dashboard-two-murex-93kzyvrvas.vercel.app", "https://dashboard-gly7feorj-git-beepys-projects.vercel.app"]}}, supports_credentials=True )
+
     # Rotas de autenticação
-    @flask_app.route('/api/auth/login', methods=['POST'])
+    @flask_app.route("/api/auth/login", methods=["POST"])
     def login():
         try:
             data = request.get_json()
-            email = data.get('email')
-            password = data.get('password')
+            email = data.get("email")
+            password = data.get("password")
 
             if not email or not password:
-                return jsonify({'error': 'Email e senha são obrigatórios'}), 400
+                return jsonify({"error": "Email e senha são obrigatórios"}), 400
 
-            # Buscar usuário no Firestore
-            users_ref = db.collection('users')
-            query = users_ref.where(field_path='email', op_string='==', value=email).limit(1)
+            users_ref = db.collection("users")
+            query = users_ref.where(field_path="email", op_string="==", value=email).limit(1)
             docs = list(query.stream())
 
             if not docs:
-                return jsonify({'error': 'Usuário não encontrado'}), 401
+                return jsonify({"error": "Usuário não encontrado"}), 401
 
             user_doc = docs[0]
             user_data = user_doc.to_dict()
 
             # Verificar senha
-            stored_password = user_data.get('password', '')
-            if isinstance(stored_password, str) and bcrypt.checkpw(password.encode('utf-8'),
-                                                                   stored_password.encode('utf-8')):
+            stored_password = user_data.get("password", "")
+            if isinstance(stored_password, str) and bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                 access_token = create_access_token(
                     identity=user_doc.id,
                     additional_claims={
-                        'email': user_data['email'],
-                        'role': user_data['role']
+                        "email": user_data["email"],
+                        "role": user_data["role"]
                     }
                 )
 
                 return jsonify({
-                    'access_token': access_token,
-                    'user': {
-                        'id': user_doc.id,
-                        'email': user_data['email'],
-                        'role': user_data['role'],
-                        'name': user_data.get('name', '')
+                    "access_token": access_token,
+                    "user": {
+                        "id": user_doc.id,
+                        "email": user_data["email"],
+                        "role": user_data["role"],
+                        "name": user_data.get("name", "")
                     }
                 }), 200
             else:
-                return jsonify({'error': 'Senha incorreta'}), 401
+                return jsonify({"error": "Senha incorreta"}), 401
 
         except Exception as e:
             print(f"Erro no login: {str(e)}")
-            return jsonify({'error': f'Erro interno: {str(e)}'}), 500
+            return jsonify({"error": f"Erro interno: {str(e)}"}), 500
 
     # Rotas de indicações
-    @flask_app.route('/api/indications', methods=['GET'])
+    @flask_app.route("/api/indications", methods=["GET"])
     @jwt_required()
     def get_indications():
         try:
             current_user_id = get_jwt_identity()
 
             # Buscar dados do usuário atual
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
 
             # Se for admin, retorna todas as indicações
-            if user_data['role'] == 'admin':
-                indications_ref = db.collection('indications')
+            if user_data["role"] == "admin":
+                indications_ref = db.collection("indications")
             else:
                 # Se for embaixadora, retorna apenas suas indicações
-                indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==',
-                                                                     value=current_user_id)
+                indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==", value=current_user_id)
 
             docs = indications_ref.stream()
             indications = []
 
             for doc in docs:
                 indication_data = doc.to_dict()
-                indication_data['id'] = doc.id
+                indication_data["id"] = doc.id
                 # Converter datetime para string se necessário
-                if 'createdAt' in indication_data and hasattr(indication_data['createdAt'], 'isoformat'):
-                    indication_data['createdAt'] = indication_data['createdAt'].isoformat()
-                if 'updatedAt' in indication_data and hasattr(indication_data['updatedAt'], 'isoformat'):
-                    indication_data['updatedAt'] = indication_data['updatedAt'].isoformat()
+                if "createdAt" in indication_data and hasattr(indication_data["createdAt"], "isoformat"):
+                    indication_data["createdAt"] = indication_data["createdAt"].isoformat()
+                if "updatedAt" in indication_data and hasattr(indication_data["updatedAt"], "isoformat"):
+                    indication_data["updatedAt"] = indication_data["updatedAt"].isoformat()
                 indications.append(indication_data)
 
             return jsonify(indications), 200
 
         except Exception as e:
             print(f"Erro ao buscar indicações: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/indications', methods=['POST'])
+    @flask_app.route("/api/indications", methods=["POST"])
     @jwt_required()
     def create_indication():
         try:
@@ -122,557 +120,554 @@ def create_app():
             data = request.get_json()
 
             indication_data = {
-                'ambassadorId': current_user_id,
-                'clientName': data.get('clientName'),
-                'clientEmail': data.get('clientEmail'),
-                'clientPhone': data.get('clientPhone'),
-                'origin': data.get('origin', 'website'),
-                'segment': data.get('segment', 'geral'),
-                'converted': False,
-                'createdAt': datetime.now(),
-                'updatedAt': datetime.now()
+                "ambassadorId": current_user_id,
+                "clientName": data.get("clientName"),
+                "clientEmail": data.get("clientEmail"),
+                "clientPhone": data.get("clientPhone"),
+                "origin": data.get("origin", "website"),
+                "segment": data.get("segment", "geral"),
+                "converted": False,
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now()
             }
 
-            doc_ref = db.collection('indications').add(indication_data)
-            indication_data['id'] = doc_ref[1].id
+            doc_ref = db.collection("indications").add(indication_data)
+            indication_data["id"] = doc_ref[1].id
 
             # Converter datetime para string
-            indication_data['createdAt'] = indication_data['createdAt'].isoformat()
-            indication_data['updatedAt'] = indication_data['updatedAt'].isoformat()
+            indication_data["createdAt"] = indication_data["createdAt"].isoformat()
+            indication_data["updatedAt"] = indication_data["updatedAt"].isoformat()
 
             return jsonify(indication_data), 201
 
         except Exception as e:
             print(f"Erro ao criar indicação: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/indications/<indication_id>', methods=['PUT'])
+    @flask_app.route("/api/indications/<indication_id>", methods=["PUT"])
     @jwt_required()
     def update_indication(indication_id):
         try:
             data = request.get_json()
 
             update_data = {
-                'updatedAt': datetime.now()
+                "updatedAt": datetime.now()
             }
 
-            if 'converted' in data:
-                update_data['converted'] = data['converted']
-            if 'clientName' in data:
-                update_data['clientName'] = data['clientName']
-            if 'clientEmail' in data:
-                update_data['clientEmail'] = data['clientEmail']
-            if 'clientPhone' in data:
-                update_data['clientPhone'] = data['clientPhone']
-            if 'origin' in data:
-                update_data['origin'] = data['origin']
-            if 'segment' in data:
-                update_data['segment'] = data['segment']
+            if "converted" in data:
+                update_data["converted"] = data["converted"]
+            if "clientName" in data:
+                update_data["clientName"] = data["clientName"]
+            if "clientEmail" in data:
+                update_data["clientEmail"] = data["clientEmail"]
+            if "clientPhone" in data:
+                update_data["clientPhone"] = data["clientPhone"]
+            if "origin" in data:
+                update_data["origin"] = data["origin"]
+            if "segment" in data:
+                update_data["segment"] = data["segment"]
 
-            db.collection('indications').document(indication_id).update(update_data)
+            db.collection("indications").document(indication_id).update(update_data)
 
-            return jsonify({'message': 'Indicação atualizada com sucesso'}), 200
+            return jsonify({"message": "Indicação atualizada com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao atualizar indicação: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/indications/<indication_id>', methods=['DELETE'])
+    @flask_app.route("/api/indications/<indication_id>", methods=["DELETE"])
     @jwt_required()
     def delete_indication(indication_id):
         try:
-            db.collection('indications').document(indication_id).delete()
-            return jsonify({'message': 'Indicação excluída com sucesso'}), 200
+            db.collection("indications").document(indication_id).delete()
+            return jsonify({"message": "Indicação excluída com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao excluir indicação: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # Rotas de usuários
-    @flask_app.route('/api/users', methods=['GET'])
+    @flask_app.route("/api/users", methods=["GET"])
     @jwt_required()
     def get_users():
         try:
             current_user_id = get_jwt_identity()
 
             # Verificar se é admin
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'admin':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "admin":
+                return jsonify({"error": "Acesso negado"}), 403
 
             # Buscar todos os usuários
-            users_ref = db.collection('users')
+            users_ref = db.collection("users")
             docs = users_ref.stream()
             users = []
 
             for doc in docs:
                 user_data = doc.to_dict()
-                user_data['id'] = doc.id
+                user_data["id"] = doc.id
                 # Remover senha do retorno
-                if 'password' in user_data:
-                    del user_data['password']
+                if "password" in user_data:
+                    del user_data["password"]
                 # Converter datetime para string se necessário
-                if 'createdAt' in user_data and hasattr(user_data['createdAt'], 'isoformat'):
-                    user_data['createdAt'] = user_data['createdAt'].isoformat()
-                if 'lastActiveAt' in user_data and hasattr(user_data['lastActiveAt'], 'isoformat'):
-                    user_data['lastActiveAt'] = user_data['lastActiveAt'].isoformat()
+                if "createdAt" in user_data and hasattr(user_data["createdAt"], "isoformat"):
+                    user_data["createdAt"] = user_data["createdAt"].isoformat()
+                if "lastActiveAt" in user_data and hasattr(user_data["lastActiveAt"], "isoformat"):
+                    user_data["lastActiveAt"] = user_data["lastActiveAt"].isoformat()
                 users.append(user_data)
 
             return jsonify(users), 200
 
         except Exception as e:
             print(f"Erro ao buscar usuários: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/users', methods=['POST'])
+    @flask_app.route("/api/users", methods=["POST"])
     @jwt_required()
     def create_user():
         try:
             current_user_id = get_jwt_identity()
 
             # Verificar se é admin
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'admin':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "admin":
+                return jsonify({"error": "Acesso negado"}), 403
 
             data = request.get_json()
 
             # Validar dados obrigatórios
-            if not data.get('email') or not data.get('password') or not data.get('name') or not data.get('role'):
-                return jsonify({'error': 'Email, senha, nome e role são obrigatórios'}), 400
+            if not data.get("email") or not data.get("password") or not data.get("name") or not data.get("role"):
+                return jsonify({"error": "Email, senha, nome e role são obrigatórios"}), 400
 
             # Verificar se email já existe
-            users_ref = db.collection('users')
-            query = users_ref.where(field_path='email', op_string='==', value=data.get('email')).limit(1)
+            users_ref = db.collection("users")
+            query = users_ref.where(field_path="email", op_string="==", value=data.get("email")).limit(1)
             existing_users = list(query.stream())
 
             if existing_users:
-                return jsonify({'error': 'Email já está em uso'}), 400
+                return jsonify({"error": "Email já está em uso"}), 400
 
             # Criar hash da senha
-            hashed_password = bcrypt.hashpw(data.get('password').encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            hashed_password = bcrypt.hashpw(data.get("password").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
             new_user_data = {
-                'email': data.get('email'),
-                'password': hashed_password,
-                'name': data.get('name'),
-                'role': data.get('role'),
-                'phone': data.get('phone', ''),
-                'createdAt': datetime.now(),
-                'lastActiveAt': datetime.now()
+                "email": data.get("email"),
+                "password": hashed_password,
+                "name": data.get("name"),
+                "role": data.get("role"),
+                "phone": data.get("phone", ""),
+                "createdAt": datetime.now(),
+                "lastActiveAt": datetime.now()
             }
 
-            doc_ref = db.collection('users').add(new_user_data)
-            new_user_data['id'] = doc_ref[1].id
+            doc_ref = db.collection("users").add(new_user_data)
+            new_user_data["id"] = doc_ref[1].id
 
             # Remover senha do retorno
-            del new_user_data['password']
+            del new_user_data["password"]
 
             # Converter datetime para string
-            new_user_data['createdAt'] = new_user_data['createdAt'].isoformat()
-            new_user_data['lastActiveAt'] = new_user_data['lastActiveAt'].isoformat()
+            new_user_data["createdAt"] = new_user_data["createdAt"].isoformat()
+            new_user_data["lastActiveAt"] = new_user_data["lastActiveAt"].isoformat()
 
             return jsonify(new_user_data), 201
 
         except Exception as e:
             print(f"Erro ao criar usuário: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/users/<user_id>', methods=['PUT'])
+    @flask_app.route("/api/users/<user_id>", methods=["PUT"])
     @jwt_required()
     def update_user(user_id):
         try:
             current_user_id = get_jwt_identity()
 
             # Verificar se é admin
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'admin':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "admin":
+                return jsonify({"error": "Acesso negado"}), 403
 
             data = request.get_json()
 
             update_data = {
-                'lastActiveAt': datetime.now()
+                "lastActiveAt": datetime.now()
             }
 
-            if 'name' in data:
-                update_data['name'] = data['name']
-            if 'email' in data:
+            if "name" in data:
+                update_data["name"] = data["name"]
+            if "email" in data:
                 # Verificar se email já existe em outro usuário
-                users_ref = db.collection('users')
-                query = users_ref.where(field_path='email', op_string='==', value=data['email']).limit(1)
+                users_ref = db.collection("users")
+                query = users_ref.where(field_path="email", op_string="==", value=data["email"]).limit(1)
                 existing_users = list(query.stream())
 
                 if existing_users and existing_users[0].id != user_id:
-                    return jsonify({'error': 'Email já está em uso'}), 400
+                    return jsonify({"error": "Email já está em uso"}), 400
 
-                update_data['email'] = data['email']
-            if 'role' in data:
-                update_data['role'] = data['role']
-            if 'phone' in data:
-                update_data['phone'] = data['phone']
-            if 'password' in data and data['password']:
+                update_data["email"] = data["email"]
+            if "role" in data:
+                update_data["role"] = data["role"]
+            if "phone" in data:
+                update_data["phone"] = data["phone"]
+            if "password" in data and data["password"]:
                 # Criar hash da nova senha
-                hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                update_data['password'] = hashed_password
+                hashed_password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                update_data["password"] = hashed_password
 
-            db.collection('users').document(user_id).update(update_data)
+            db.collection("users").document(user_id).update(update_data)
 
-            return jsonify({'message': 'Usuário atualizado com sucesso'}), 200
+            return jsonify({"message": "Usuário atualizado com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao atualizar usuário: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/users/<user_id>', methods=['DELETE'])
+    @flask_app.route("/api/users/<user_id>", methods=["DELETE"])
     @jwt_required()
     def delete_user(user_id):
         try:
             current_user_id = get_jwt_identity()
 
             # Verificar se é admin
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'admin':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "admin":
+                return jsonify({"error": "Acesso negado"}), 403
 
             # Não permitir deletar a si mesmo
             if current_user_id == user_id:
-                return jsonify({'error': 'Não é possível deletar seu próprio usuário'}), 400
+                return jsonify({"error": "Não é possível deletar seu próprio usuário"}), 400
 
-            db.collection('users').document(user_id).delete()
-            return jsonify({'message': 'Usuário excluído com sucesso'}), 200
+            db.collection("users").document(user_id).delete()
+            return jsonify({"message": "Usuário excluído com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao excluir usuário: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # Rotas de comissões
-    @flask_app.route('/api/commissions', methods=['GET'])
+    @flask_app.route("/api/commissions", methods=["GET"])
     @jwt_required()
     def get_commissions():
         try:
             current_user_id = get_jwt_identity()
 
             # Buscar dados do usuário atual
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
 
             # Se for admin, retorna todas as comissões
-            if user_data['role'] == 'admin':
-                commissions_ref = db.collection('commissions')
+            if user_data["role"] == "admin":
+                commissions_ref = db.collection("commissions")
             else:
                 # Se for embaixadora, retorna apenas suas comissões
-                commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==',
-                                                                     value=current_user_id)
+                commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==", value=current_user_id)
 
             docs = commissions_ref.stream()
             commissions = []
 
             for doc in docs:
                 commission_data = doc.to_dict()
-                commission_data['id'] = doc.id
+                commission_data["id"] = doc.id
                 # Converter datetime para string se necessário
-                if 'createdAt' in commission_data and hasattr(commission_data['createdAt'], 'isoformat'):
-                    commission_data['createdAt'] = commission_data['createdAt'].isoformat()
-                if 'updatedAt' in commission_data and hasattr(commission_data['updatedAt'], 'isoformat'):
-                    commission_data['updatedAt'] = commission_data['updatedAt'].isoformat()
+                if "createdAt" in commission_data and hasattr(commission_data["createdAt"], "isoformat"):
+                    commission_data["createdAt"] = commission_data["createdAt"].isoformat()
+                if "updatedAt" in commission_data and hasattr(commission_data["updatedAt"], "isoformat"):
+                    commission_data["updatedAt"] = commission_data["updatedAt"].isoformat()
                 commissions.append(commission_data)
 
             return jsonify(commissions), 200
 
         except Exception as e:
             print(f"Erro ao buscar comissões: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/commissions', methods=['POST'])
+    @flask_app.route("/api/commissions", methods=["POST"])
     @jwt_required()
     def create_commission():
         try:
             data = request.get_json()
 
             commission_data = {
-                'ambassadorId': data.get('ambassadorId'),
-                'indicationId': data.get('indicationId'),
-                'value': data.get('value'),
-                'status': data.get('status', 'pending'),
-                'createdAt': datetime.now(),
-                'updatedAt': datetime.now()
+                "ambassadorId": data.get("ambassadorId"),
+                "indicationId": data.get("indicationId"),
+                "value": data.get("value"),
+                "status": data.get("status", "pending"),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now()
             }
 
-            doc_ref = db.collection('commissions').add(commission_data)
-            commission_data['id'] = doc_ref[1].id
+            doc_ref = db.collection("commissions").add(commission_data)
+            commission_data["id"] = doc_ref[1].id
 
             # Converter datetime para string
-            commission_data['createdAt'] = commission_data['createdAt'].isoformat()
-            commission_data['updatedAt'] = commission_data['updatedAt'].isoformat()
+            commission_data["createdAt"] = commission_data["createdAt"].isoformat()
+            commission_data["updatedAt"] = commission_data["updatedAt"].isoformat()
 
             return jsonify(commission_data), 201
 
         except Exception as e:
             print(f"Erro ao criar comissão: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/commissions/<commission_id>', methods=['PUT'])
+    @flask_app.route("/api/commissions/<commission_id>", methods=["PUT"])
     @jwt_required()
     def update_commission(commission_id):
         try:
             data = request.get_json()
 
             update_data = {
-                'updatedAt': datetime.now()
+                "updatedAt": datetime.now()
             }
 
-            if 'status' in data:
-                update_data['status'] = data['status']
-            if 'value' in data:
-                update_data['value'] = data['value']
+            if "status" in data:
+                update_data["status"] = data["status"]
+            if "value" in data:
+                update_data["value"] = data["value"]
 
-            db.collection('commissions').document(commission_id).update(update_data)
+            db.collection("commissions").document(commission_id).update(update_data)
 
-            return jsonify({'message': 'Comissão atualizada com sucesso'}), 200
+            return jsonify({"message": "Comissão atualizada com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao atualizar comissão: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/commissions/<commission_id>', methods=['DELETE'])
+    @flask_app.route("/api/commissions/<commission_id>", methods=["DELETE"])
     @jwt_required()
     def delete_commission(commission_id):
         try:
-            db.collection('commissions').document(commission_id).delete()
-            return jsonify({'message': 'Comissão excluída com sucesso'}), 200
+            db.collection("commissions").document(commission_id).delete()
+            return jsonify({"message": "Comissão excluída com sucesso"}), 200
 
         except Exception as e:
             print(f"Erro ao excluir comissão: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # Rotas de vendas
-    @flask_app.route('/api/sales', methods=['GET'])
+    @flask_app.route("/api/sales", methods=["GET"])
     @jwt_required()
     def get_sales():
         try:
             current_user_id = get_jwt_identity()
 
             # Buscar dados do usuário atual
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
 
             # Se for admin, retorna todas as vendas
-            if user_data['role'] == 'admin':
-                sales_ref = db.collection('sales')
+            if user_data["role"] == "admin":
+                sales_ref = db.collection("sales")
             else:
                 # Se for embaixadora, retorna apenas suas vendas
-                sales_ref = db.collection('sales').where(field_path='ambassadorId', op_string='==',
-                                                         value=current_user_id)
+                sales_ref = db.collection("sales").where(field_path="ambassadorId", op_string="==", value=current_user_id)
 
             docs = sales_ref.stream()
             sales = []
 
             for doc in docs:
                 sale_data = doc.to_dict()
-                sale_data['id'] = doc.id
+                sale_data["id"] = doc.id
                 # Converter datetime para string se necessário
-                if 'createdAt' in sale_data and hasattr(sale_data['createdAt'], 'isoformat'):
-                    sale_data['createdAt'] = sale_data['createdAt'].isoformat()
-                if 'updatedAt' in sale_data and hasattr(sale_data['updatedAt'], 'isoformat'):
-                    sale_data['updatedAt'] = sale_data['updatedAt'].isoformat()
+                if "createdAt" in sale_data and hasattr(sale_data["createdAt"], "isoformat"):
+                    sale_data["createdAt"] = sale_data["createdAt"].isoformat()
+                if "updatedAt" in sale_data and hasattr(sale_data["updatedAt"], "isoformat"):
+                    sale_data["updatedAt"] = sale_data["updatedAt"].isoformat()
                 sales.append(sale_data)
 
             return jsonify(sales), 200
 
         except Exception as e:
             print(f"Erro ao buscar vendas: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/sales', methods=['POST'])
+    @flask_app.route("/api/sales", methods=["POST"])
     @jwt_required()
     def create_sale():
         try:
             data = request.get_json()
 
             sale_data = {
-                'ambassadorId': data.get('ambassadorId'),
-                'indicationId': data.get('indicationId'),
-                'value': data.get('value'),
-                'createdAt': datetime.now(),
-                'updatedAt': datetime.now()
+                "ambassadorId": data.get("ambassadorId"),
+                "indicationId": data.get("indicationId"),
+                "value": data.get("value"),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now()
             }
 
-            doc_ref = db.collection('sales').add(sale_data)
-            sale_data['id'] = doc_ref[1].id
+            doc_ref = db.collection("sales").add(sale_data)
+            sale_data["id"] = doc_ref[1].id
 
             # Converter datetime para string
-            sale_data['createdAt'] = sale_data['createdAt'].isoformat()
-            sale_data['updatedAt'] = sale_data['updatedAt'].isoformat()
+            sale_data["createdAt"] = sale_data["createdAt"].isoformat()
+            sale_data["updatedAt"] = sale_data["updatedAt"].isoformat()
 
             return jsonify(sale_data), 201
 
         except Exception as e:
             print(f"Erro ao criar venda: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # Rotas de dashboard
-    @flask_app.route('/api/dashboard/admin', methods=['GET'])
+    @flask_app.route("/api/dashboard/admin", methods=["GET"])
     @jwt_required()
     def get_admin_dashboard():
         try:
             current_user_id = get_jwt_identity()
 
             # Verificar se é admin
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'admin':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "admin":
+                return jsonify({"error": "Acesso negado"}), 403
 
             # Buscar dados para o dashboard
             dashboard_data = {}
 
             # Embaixadoras ativas (últimos 60 dias)
             sixty_days_ago = datetime.now() - timedelta(days=60)
-            users_ref = db.collection('users').where(field_path='role', op_string='==', value='embaixadora')
+            users_ref = db.collection("users").where(field_path="role", op_string="==", value="embaixadora")
             active_ambassadors = 0
             total_ambassadors = 0
 
             for user_doc in users_ref.stream():
                 total_ambassadors += 1
                 user_data = user_doc.to_dict()
-                if 'lastActiveAt' in user_data and user_data['lastActiveAt'] > sixty_days_ago:
+                if "lastActiveAt" in user_data and user_data["lastActiveAt"] > sixty_days_ago:
                     active_ambassadors += 1
 
-            dashboard_data['activeAmbassadors'] = {
-                'active': active_ambassadors,
-                'total': total_ambassadors,
-                'percentage': (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
+            dashboard_data["activeAmbassadors"] = {
+                "active": active_ambassadors,
+                "total": total_ambassadors,
+                "percentage": (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
             }
 
             # Indicações por mês
-            indications_ref = db.collection('indications')
+            indications_ref = db.collection("indications")
             indications_by_month = {}
 
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
-                if 'createdAt' in indication_data:
-                    created_at = indication_data['createdAt']
-                    if hasattr(created_at, 'strftime'):
-                        month_key = created_at.strftime('%Y-%m')
+                if "createdAt" in indication_data:
+                    created_at = indication_data["createdAt"]
+                    if hasattr(created_at, "strftime"):
+                        month_key = created_at.strftime("%Y-%m")
                     else:
                         # Se for string, tentar converter
                         try:
-                            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                            month_key = created_at.strftime('%Y-%m')
+                            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                            month_key = created_at.strftime("%Y-%m")
                         except:
-                            month_key = '2024-01'  # fallback
+                            month_key = "2024-01"  # fallback
                     indications_by_month[month_key] = indications_by_month.get(month_key, 0) + 1
 
-            dashboard_data['indicationsByMonth'] = indications_by_month
+            dashboard_data["indicationsByMonth"] = indications_by_month
 
             # Leads por origem
             leads_by_origin = {}
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
-                origin = indication_data.get('origin', 'unknown')
+                origin = indication_data.get("origin", "unknown")
                 leads_by_origin[origin] = leads_by_origin.get(origin, 0) + 1
 
-            dashboard_data['leadsByOrigin'] = leads_by_origin
+            dashboard_data["leadsByOrigin"] = leads_by_origin
 
             # Conversão por segmento
             conversion_by_segment = {}
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
-                segment = indication_data.get('segment', 'geral')
+                segment = indication_data.get("segment", "geral")
                 if segment not in conversion_by_segment:
-                    conversion_by_segment[segment] = {'total': 0, 'converted': 0}
-                conversion_by_segment[segment]['total'] += 1
-                if indication_data.get('converted', False):
-                    conversion_by_segment[segment]['converted'] += 1
+                    conversion_by_segment[segment] = {"total": 0, "converted": 0}
+                conversion_by_segment[segment]["total"] += 1
+                if indication_data.get("converted", False):
+                    conversion_by_segment[segment]["converted"] += 1
 
-            dashboard_data['conversionBySegment'] = conversion_by_segment
+            dashboard_data["conversionBySegment"] = conversion_by_segment
 
             # Vendas por mês
-            sales_ref = db.collection('sales')
+            sales_ref = db.collection("sales")
             sales_by_month = {}
 
             for sale_doc in sales_ref.stream():
                 sale_data = sale_doc.to_dict()
-                if 'createdAt' in sale_data:
-                    created_at = sale_data['createdAt']
-                    if hasattr(created_at, 'strftime'):
-                        month_key = created_at.strftime('%Y-%m')
+                if "createdAt" in sale_data:
+                    created_at = sale_data["createdAt"]
+                    if hasattr(created_at, "strftime"):
+                        month_key = created_at.strftime("%Y-%m")
                     else:
                         # Se for string, tentar converter
                         try:
-                            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                            month_key = created_at.strftime('%Y-%m')
+                            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                            month_key = created_at.strftime("%Y-%m")
                         except:
-                            month_key = '2024-01'  # fallback
+                            month_key = "2024-01"  # fallback
                     if month_key not in sales_by_month:
                         sales_by_month[month_key] = 0
-                    sales_by_month[month_key] += sale_data.get('value', 0)
+                    sales_by_month[month_key] += sale_data.get("value", 0)
 
-            dashboard_data['salesByMonth'] = sales_by_month
+            dashboard_data["salesByMonth"] = sales_by_month
 
             # Top embaixadoras por indicação
             ambassador_indications = {}
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
-                ambassador_id = indication_data.get('ambassadorId')
+                ambassador_id = indication_data.get("ambassadorId")
                 if ambassador_id:
                     ambassador_indications[ambassador_id] = ambassador_indications.get(ambassador_id, 0) + 1
 
-            dashboard_data['topAmbassadorsByIndications'] = ambassador_indications
+            dashboard_data["topAmbassadorsByIndications"] = ambassador_indications
 
             return jsonify(dashboard_data), 200
 
         except Exception as e:
             print(f"Erro no dashboard admin: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/api/dashboard/embaixadora', methods=['GET'])
+    @flask_app.route("/api/dashboard/embaixadora", methods=["GET"])
     @jwt_required()
     def get_ambassador_dashboard():
         try:
             current_user_id = get_jwt_identity()
 
             # Buscar dados do usuário atual
-            user_doc = db.collection('users').document(current_user_id).get()
+            user_doc = db.collection("users").document(current_user_id).get()
             if not user_doc.exists:
-                return jsonify({'error': 'Usuário não encontrado'}), 404
+                return jsonify({"error": "Usuário não encontrado"}), 404
 
             user_data = user_doc.to_dict()
-            if user_data['role'] != 'embaixadora':
-                return jsonify({'error': 'Acesso negado'}), 403
+            if user_data["role"] != "embaixadora":
+                return jsonify({"error": "Acesso negado"}), 403
 
             # Buscar dados para o dashboard da embaixadora
             dashboard_data = {}
 
             # Indicações da embaixadora
-            indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==',
-                                                                 value=current_user_id)
+            indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==", value=current_user_id)
             total_indications = 0
             converted_indications = 0
             indications_by_month = {}
@@ -680,103 +675,102 @@ def create_app():
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
                 total_indications += 1
-                if indication_data.get('converted', False):
+                if indication_data.get("converted", False):
                     converted_indications += 1
 
-                if 'createdAt' in indication_data:
-                    created_at = indication_data['createdAt']
-                    if hasattr(created_at, 'strftime'):
-                        month_key = created_at.strftime('%Y-%m')
+                if "createdAt" in indication_data:
+                    created_at = indication_data["createdAt"]
+                    if hasattr(created_at, "strftime"):
+                        month_key = created_at.strftime("%Y-%m")
                     else:
                         # Se for string, tentar converter
                         try:
-                            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                            month_key = created_at.strftime('%Y-%m')
+                            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                            month_key = created_at.strftime("%Y-%m")
                         except:
-                            month_key = '2024-01'  # fallback
+                            month_key = "2024-01"  # fallback
                     indications_by_month[month_key] = indications_by_month.get(month_key, 0) + 1
 
-            dashboard_data['totalIndications'] = total_indications
-            dashboard_data['convertedIndications'] = converted_indications
-            dashboard_data['conversionRate'] = (
-                        converted_indications / total_indications * 100) if total_indications > 0 else 0
-            dashboard_data['indicationsByMonth'] = indications_by_month
+            dashboard_data["totalIndications"] = total_indications
+            dashboard_data["convertedIndications"] = converted_indications
+            dashboard_data["conversionRate"] = (converted_indications / total_indications * 100) if total_indications > 0 else 0
+            dashboard_data["indicationsByMonth"] = indications_by_month
 
             # Comissões da embaixadora
-            commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==',
-                                                                 value=current_user_id)
+            commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==", value=current_user_id)
             total_commissions = 0
             paid_commissions = 0
 
             for commission_doc in commissions_ref.stream():
                 commission_data = commission_doc.to_dict()
-                total_commissions += commission_data.get('value', 0)
-                if commission_data.get('status') == 'paid':
-                    paid_commissions += commission_data.get('value', 0)
+                total_commissions += commission_data.get("value", 0)
+                if commission_data.get("status") == "paid":
+                    paid_commissions += commission_data.get("value", 0)
 
-            dashboard_data['totalCommissions'] = total_commissions
-            dashboard_data['paidCommissions'] = paid_commissions
-            dashboard_data['pendingCommissions'] = total_commissions - paid_commissions
+            dashboard_data["totalCommissions"] = total_commissions
+            dashboard_data["paidCommissions"] = paid_commissions
+            dashboard_data["pendingCommissions"] = total_commissions - paid_commissions
 
             return jsonify(dashboard_data), 200
 
         except Exception as e:
             print(f"Erro no dashboard embaixadora: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
     # Rota para criar usuário admin inicial
-    @flask_app.route('/api/setup', methods=['POST'])
+    @flask_app.route("/api/setup", methods=["POST"])
     def setup_admin():
         try:
             # Verificar se já existe um admin
-            users_ref = db.collection('users').where(field_path='role', op_string='==', value='admin').limit(1)
+            users_ref = db.collection("users").where(field_path="role", op_string="==", value="admin").limit(1)
             docs = list(users_ref.stream())
 
             if docs:
-                return jsonify({'message': 'Admin já existe'}), 200
+                return jsonify({"message": "Admin já existe"}), 200
 
             # Criar usuário admin
-            hashed_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            hashed_password = bcrypt.hashpw("admin123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
             admin_data = {
-                'email': 'admin@beepy.com',
-                'password': hashed_password,
-                'role': 'admin',
-                'name': 'Administrador',
-                'createdAt': datetime.now(),
-                'lastActiveAt': datetime.now()
+                "email": "admin@beepy.com",
+                "password": hashed_password,
+                "role": "admin",
+                "name": "Administrador",
+                "createdAt": datetime.now(),
+                "lastActiveAt": datetime.now()
             }
 
-            db.collection('users').add(admin_data)
+            db.collection("users").add(admin_data)
 
-            return jsonify({'message': 'Usuário admin criado com sucesso'}), 201
+            return jsonify({"message": "Usuário admin criado com sucesso"}), 201
 
         except Exception as e:
             print(f"Erro ao criar admin: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            return jsonify({"error": str(e)}), 500
 
-    @flask_app.route('/')
+    @flask_app.route("/")
     def home():
         return {
-            'message': 'Beepy API - Sistema de Indicações e Comissões',
-            'version': '2.0',
-            'endpoints': {
-                'auth': '/api/auth',
-                'indications': '/api/indications',
-                'commissions': '/api/commissions',
-                'sales': '/api/sales',
-                'dashboard': '/api/dashboard'
+            "message": "Beepy API - Sistema de Indicações e Comissões",
+            "version": "2.0",
+            "endpoints": {
+                "auth": "/api/auth",
+                "indications": "/api/indications",
+                "commissions": "/api/commissions",
+                "sales": "/api/sales",
+                "dashboard": "/api/dashboard"
             }
         }
 
-    @flask_app.route('/health')
+    @flask_app.route("/health")
     def health():
-        return {'status': 'healthy', 'service': 'beepy-api'}
+        return {"status": "healthy", "service": "beepy-api"}
 
     return flask_app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host="0.0.0.0", port=10000, debug=True)
+
 
