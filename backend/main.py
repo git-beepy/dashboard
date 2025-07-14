@@ -21,7 +21,10 @@ def create_app():
     flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, origins="*")
+    CORS(flask_app, origins=[
+        "http://localhost:5173",
+        "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+    ])
 
     # Rotas de autenticação
     @flask_app.route('/api/auth/login', methods=['POST'])
