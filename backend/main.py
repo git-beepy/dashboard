@@ -13,6 +13,7 @@ cred = credentials.Certificate('projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
+
 def create_app():
     flask_app = Flask(__name__)
 
@@ -21,10 +22,9 @@ def create_app():
     flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, origins=[
-        "http://localhost:5173",
-        "https://dashboard-git-main-git-beepys-projects.vercel.app"
-    ])
+    CORS(flask_app, resources={r"/api/*": {
+        "origins": ["http://localhost:5173", "https://dashboard-git-main-git-beepys-projects.vercel.app",
+                    "https://dashboard-two-murex-93kzyvrvas.vercel.app"]}}, supports_credentials=True)
 
     # Rotas de autenticação
     @flask_app.route('/api/auth/login', methods=['POST'])
@@ -41,16 +41,17 @@ def create_app():
             users_ref = db.collection('users')
             query = users_ref.where(field_path='email', op_string='==', value=email).limit(1)
             docs = list(query.stream())
-            
+
             if not docs:
                 return jsonify({'error': 'Usuário não encontrado'}), 401
 
             user_doc = docs[0]
             user_data = user_doc.to_dict()
-            
+
             # Verificar senha
             stored_password = user_data.get('password', '')
-            if isinstance(stored_password, str) and bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
+            if isinstance(stored_password, str) and bcrypt.checkpw(password.encode('utf-8'),
+                                                                   stored_password.encode('utf-8')):
                 access_token = create_access_token(
                     identity=user_doc.id,
                     additional_claims={
@@ -58,7 +59,7 @@ def create_app():
                         'role': user_data['role']
                     }
                 )
-                
+
                 return jsonify({
                     'access_token': access_token,
                     'user': {
@@ -81,24 +82,25 @@ def create_app():
     def get_indications():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Buscar dados do usuário atual
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
-            
+
             # Se for admin, retorna todas as indicações
             if user_data['role'] == 'admin':
                 indications_ref = db.collection('indications')
             else:
                 # Se for embaixadora, retorna apenas suas indicações
-                indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==', value=current_user_id)
-            
+                indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==',
+                                                                     value=current_user_id)
+
             docs = indications_ref.stream()
             indications = []
-            
+
             for doc in docs:
                 indication_data = doc.to_dict()
                 indication_data['id'] = doc.id
@@ -108,7 +110,7 @@ def create_app():
                 if 'updatedAt' in indication_data and hasattr(indication_data['updatedAt'], 'isoformat'):
                     indication_data['updatedAt'] = indication_data['updatedAt'].isoformat()
                 indications.append(indication_data)
-            
+
             return jsonify(indications), 200
 
         except Exception as e:
@@ -136,7 +138,7 @@ def create_app():
 
             doc_ref = db.collection('indications').add(indication_data)
             indication_data['id'] = doc_ref[1].id
-            
+
             # Converter datetime para string
             indication_data['createdAt'] = indication_data['createdAt'].isoformat()
             indication_data['updatedAt'] = indication_data['updatedAt'].isoformat()
@@ -152,11 +154,11 @@ def create_app():
     def update_indication(indication_id):
         try:
             data = request.get_json()
-            
+
             update_data = {
                 'updatedAt': datetime.now()
             }
-            
+
             if 'converted' in data:
                 update_data['converted'] = data['converted']
             if 'clientName' in data:
@@ -195,12 +197,12 @@ def create_app():
     def get_users():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Verificar se é admin
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'admin':
                 return jsonify({'error': 'Acesso negado'}), 403
@@ -209,7 +211,7 @@ def create_app():
             users_ref = db.collection('users')
             docs = users_ref.stream()
             users = []
-            
+
             for doc in docs:
                 user_data = doc.to_dict()
                 user_data['id'] = doc.id
@@ -222,7 +224,7 @@ def create_app():
                 if 'lastActiveAt' in user_data and hasattr(user_data['lastActiveAt'], 'isoformat'):
                     user_data['lastActiveAt'] = user_data['lastActiveAt'].isoformat()
                 users.append(user_data)
-            
+
             return jsonify(users), 200
 
         except Exception as e:
@@ -234,18 +236,18 @@ def create_app():
     def create_user():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Verificar se é admin
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'admin':
                 return jsonify({'error': 'Acesso negado'}), 403
 
             data = request.get_json()
-            
+
             # Validar dados obrigatórios
             if not data.get('email') or not data.get('password') or not data.get('name') or not data.get('role'):
                 return jsonify({'error': 'Email, senha, nome e role são obrigatórios'}), 400
@@ -254,7 +256,7 @@ def create_app():
             users_ref = db.collection('users')
             query = users_ref.where(field_path='email', op_string='==', value=data.get('email')).limit(1)
             existing_users = list(query.stream())
-            
+
             if existing_users:
                 return jsonify({'error': 'Email já está em uso'}), 400
 
@@ -273,10 +275,10 @@ def create_app():
 
             doc_ref = db.collection('users').add(new_user_data)
             new_user_data['id'] = doc_ref[1].id
-            
+
             # Remover senha do retorno
             del new_user_data['password']
-            
+
             # Converter datetime para string
             new_user_data['createdAt'] = new_user_data['createdAt'].isoformat()
             new_user_data['lastActiveAt'] = new_user_data['lastActiveAt'].isoformat()
@@ -292,22 +294,22 @@ def create_app():
     def update_user(user_id):
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Verificar se é admin
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'admin':
                 return jsonify({'error': 'Acesso negado'}), 403
 
             data = request.get_json()
-            
+
             update_data = {
                 'lastActiveAt': datetime.now()
             }
-            
+
             if 'name' in data:
                 update_data['name'] = data['name']
             if 'email' in data:
@@ -315,10 +317,10 @@ def create_app():
                 users_ref = db.collection('users')
                 query = users_ref.where(field_path='email', op_string='==', value=data['email']).limit(1)
                 existing_users = list(query.stream())
-                
+
                 if existing_users and existing_users[0].id != user_id:
                     return jsonify({'error': 'Email já está em uso'}), 400
-                
+
                 update_data['email'] = data['email']
             if 'role' in data:
                 update_data['role'] = data['role']
@@ -342,12 +344,12 @@ def create_app():
     def delete_user(user_id):
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Verificar se é admin
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'admin':
                 return jsonify({'error': 'Acesso negado'}), 403
@@ -369,24 +371,25 @@ def create_app():
     def get_commissions():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Buscar dados do usuário atual
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
-            
+
             # Se for admin, retorna todas as comissões
             if user_data['role'] == 'admin':
                 commissions_ref = db.collection('commissions')
             else:
                 # Se for embaixadora, retorna apenas suas comissões
-                commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==', value=current_user_id)
-            
+                commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==',
+                                                                     value=current_user_id)
+
             docs = commissions_ref.stream()
             commissions = []
-            
+
             for doc in docs:
                 commission_data = doc.to_dict()
                 commission_data['id'] = doc.id
@@ -396,7 +399,7 @@ def create_app():
                 if 'updatedAt' in commission_data and hasattr(commission_data['updatedAt'], 'isoformat'):
                     commission_data['updatedAt'] = commission_data['updatedAt'].isoformat()
                 commissions.append(commission_data)
-            
+
             return jsonify(commissions), 200
 
         except Exception as e:
@@ -420,7 +423,7 @@ def create_app():
 
             doc_ref = db.collection('commissions').add(commission_data)
             commission_data['id'] = doc_ref[1].id
-            
+
             # Converter datetime para string
             commission_data['createdAt'] = commission_data['createdAt'].isoformat()
             commission_data['updatedAt'] = commission_data['updatedAt'].isoformat()
@@ -436,11 +439,11 @@ def create_app():
     def update_commission(commission_id):
         try:
             data = request.get_json()
-            
+
             update_data = {
                 'updatedAt': datetime.now()
             }
-            
+
             if 'status' in data:
                 update_data['status'] = data['status']
             if 'value' in data:
@@ -471,24 +474,25 @@ def create_app():
     def get_sales():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Buscar dados do usuário atual
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
-            
+
             # Se for admin, retorna todas as vendas
             if user_data['role'] == 'admin':
                 sales_ref = db.collection('sales')
             else:
                 # Se for embaixadora, retorna apenas suas vendas
-                sales_ref = db.collection('sales').where(field_path='ambassadorId', op_string='==', value=current_user_id)
-            
+                sales_ref = db.collection('sales').where(field_path='ambassadorId', op_string='==',
+                                                         value=current_user_id)
+
             docs = sales_ref.stream()
             sales = []
-            
+
             for doc in docs:
                 sale_data = doc.to_dict()
                 sale_data['id'] = doc.id
@@ -498,7 +502,7 @@ def create_app():
                 if 'updatedAt' in sale_data and hasattr(sale_data['updatedAt'], 'isoformat'):
                     sale_data['updatedAt'] = sale_data['updatedAt'].isoformat()
                 sales.append(sale_data)
-            
+
             return jsonify(sales), 200
 
         except Exception as e:
@@ -521,7 +525,7 @@ def create_app():
 
             doc_ref = db.collection('sales').add(sale_data)
             sale_data['id'] = doc_ref[1].id
-            
+
             # Converter datetime para string
             sale_data['createdAt'] = sale_data['createdAt'].isoformat()
             sale_data['updatedAt'] = sale_data['updatedAt'].isoformat()
@@ -538,12 +542,12 @@ def create_app():
     def get_admin_dashboard():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Verificar se é admin
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'admin':
                 return jsonify({'error': 'Acesso negado'}), 403
@@ -556,7 +560,7 @@ def create_app():
             users_ref = db.collection('users').where(field_path='role', op_string='==', value='embaixadora')
             active_ambassadors = 0
             total_ambassadors = 0
-            
+
             for user_doc in users_ref.stream():
                 total_ambassadors += 1
                 user_data = user_doc.to_dict()
@@ -572,7 +576,7 @@ def create_app():
             # Indicações por mês
             indications_ref = db.collection('indications')
             indications_by_month = {}
-            
+
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
                 if 'createdAt' in indication_data:
@@ -615,7 +619,7 @@ def create_app():
             # Vendas por mês
             sales_ref = db.collection('sales')
             sales_by_month = {}
-            
+
             for sale_doc in sales_ref.stream():
                 sale_data = sale_doc.to_dict()
                 if 'createdAt' in sale_data:
@@ -656,12 +660,12 @@ def create_app():
     def get_ambassador_dashboard():
         try:
             current_user_id = get_jwt_identity()
-            
+
             # Buscar dados do usuário atual
             user_doc = db.collection('users').document(current_user_id).get()
             if not user_doc.exists:
                 return jsonify({'error': 'Usuário não encontrado'}), 404
-            
+
             user_data = user_doc.to_dict()
             if user_data['role'] != 'embaixadora':
                 return jsonify({'error': 'Acesso negado'}), 403
@@ -670,17 +674,18 @@ def create_app():
             dashboard_data = {}
 
             # Indicações da embaixadora
-            indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==', value=current_user_id)
+            indications_ref = db.collection('indications').where(field_path='ambassadorId', op_string='==',
+                                                                 value=current_user_id)
             total_indications = 0
             converted_indications = 0
             indications_by_month = {}
-            
+
             for indication_doc in indications_ref.stream():
                 indication_data = indication_doc.to_dict()
                 total_indications += 1
                 if indication_data.get('converted', False):
                     converted_indications += 1
-                
+
                 if 'createdAt' in indication_data:
                     created_at = indication_data['createdAt']
                     if hasattr(created_at, 'strftime'):
@@ -696,14 +701,16 @@ def create_app():
 
             dashboard_data['totalIndications'] = total_indications
             dashboard_data['convertedIndications'] = converted_indications
-            dashboard_data['conversionRate'] = (converted_indications / total_indications * 100) if total_indications > 0 else 0
+            dashboard_data['conversionRate'] = (
+                        converted_indications / total_indications * 100) if total_indications > 0 else 0
             dashboard_data['indicationsByMonth'] = indications_by_month
 
             # Comissões da embaixadora
-            commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==', value=current_user_id)
+            commissions_ref = db.collection('commissions').where(field_path='ambassadorId', op_string='==',
+                                                                 value=current_user_id)
             total_commissions = 0
             paid_commissions = 0
-            
+
             for commission_doc in commissions_ref.stream():
                 commission_data = commission_doc.to_dict()
                 total_commissions += commission_data.get('value', 0)
@@ -727,13 +734,13 @@ def create_app():
             # Verificar se já existe um admin
             users_ref = db.collection('users').where(field_path='role', op_string='==', value='admin').limit(1)
             docs = list(users_ref.stream())
-            
+
             if docs:
                 return jsonify({'message': 'Admin já existe'}), 200
 
             # Criar usuário admin
             hashed_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            
+
             admin_data = {
                 'email': 'admin@beepy.com',
                 'password': hashed_password,
@@ -770,6 +777,7 @@ def create_app():
         return {'status': 'healthy', 'service': 'beepy-api'}
 
     return flask_app
+
 
 if __name__ == '__main__':
     app = create_app()
