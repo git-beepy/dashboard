@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0'
   },
-  // base: './', // Remova ou comente esta linha
+  base: '',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
