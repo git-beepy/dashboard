@@ -3,6 +3,7 @@ import sys
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 import bcrypt
@@ -21,6 +22,23 @@ def create_app():
     flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
+    CORS(flask_app, supports_credentials=True)
+
+    @flask_app.after_request
+    def apply_cors_headers(response):
+        origin = request.headers.get("Origin")
+        allowed_origins = [
+            "http://localhost:5173",
+            "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+        ]
+
+        if origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
 
     # Rotas de autenticação
     @flask_app.route("/api/auth/login", methods=["POST"])
