@@ -27,8 +27,13 @@ def create_app():
                     "https://dashboard-two-murex-93kzyvrvas.vercel.app"]}}, supports_credentials=True)
 
     # Rotas de autenticação
-    @flask_app.route('/api/auth/login', methods=['POST'])
-    def login():
+    @flask_app.route("/api/auth/login", methods=["POST", "OPTIONS"])
+
+
+def login():
+    if request.method == "OPTIONS":
+        return jsonify({"message": "Preflight request successful"}), 200
+    else:
         try:
             data = request.get_json()
             email = data.get('email')
