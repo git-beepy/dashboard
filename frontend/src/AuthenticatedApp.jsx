@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, TrendingUp, Users, DollarSign, Calendar, LogOut, User, BarChart3, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
-const API_BASE_URL = 'http://localhost:5000/api'; // URL do backend local
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const AuthenticatedApp = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

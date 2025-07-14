@@ -9,7 +9,7 @@ import { Badge } from './ui/badge';
 import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 
 const Users = () => {
-  const { token } = useAuth();
+  const { token, API_BASE_URL } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -29,7 +29,7 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${API_BASE_URL}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -54,8 +54,8 @@ const Users = () => {
 
     try {
       const url = editingUser
-        ? `http://localhost:5000/api/users/${editingUser.id}`
-        : 'http://localhost:5000/api/users';
+        ? `${API_BASE_URL}/users/${editingUser.id}`
+        : `${API_BASE_URL}/users`;
 
       const method = editingUser ? 'PUT' : 'POST';
 
@@ -100,7 +100,7 @@ const Users = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -13,5 +13,18 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0'
   },
-  base: './' // Adicione esta linha para corrigir o problema de carregamento de assets
+  base: './',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+        assetFileNames: 'assets/[name].[hash].[ext]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js'
+      }
+    }
+  }
 });
