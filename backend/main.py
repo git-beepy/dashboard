@@ -22,14 +22,14 @@ def create_app():
     flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, supports_credentials=True)
-
+    # CORS(flask_app, supports_credentials=True)
     @flask_app.after_request
     def apply_cors_headers(response):
         origin = request.headers.get("Origin")
         allowed_origins = [
             "http://localhost:5173",
-            "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+            "https://dashboard-two-murex-93kzyvrvas.vercel.app",
+            "https://dashboard-ly5jq5qxj-git-beepys-projects.vercel.app"  # <- novo domínio da Vercel
         ]
 
         if origin in allowed_origins:
