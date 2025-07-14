@@ -22,7 +22,16 @@ def create_app():
     flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    CORS(flask_app, resources={r"/api/*": {"origins": ["http://localhost:5173", "https://dashboard-git-main-git-beepys-projects.vercel.app", "https://dashboard-two-murex-93kzyvrvas.vercel.app", "https://dashboard-gly7feorj-git-beepys-projects.vercel.app"]}}, supports_credentials=True )
+    CORS(flask_app, resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:5173",
+                "https://dashboard-git-main-git-beepys-projects.vercel.app",
+                "https://dashboard-2ypkri6e6-git-beepys-projects.vercel.app",
+                "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+            ]
+        }
+    }, supports_credentials=True)
 
     # Rotas de autenticação
     @flask_app.route("/api/auth/login", methods=["POST"])
