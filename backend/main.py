@@ -29,7 +29,7 @@ def create_app():
                 "https://dashboard-two-murex-93kzyvrvas.vercel.app"
             ],
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+            "allow_headers": ["Content-Type", "Authorization"],
         }
     }, supports_credentials=True)
 
