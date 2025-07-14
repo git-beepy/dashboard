@@ -26,8 +26,10 @@ def create_app():
         r"/api/*": {
             "origins": [
                 "http://localhost:5173",
-                "https://dashboard-two-murex-93kzyvrvas.vercel.app"  # único domínio fixo da Vercel
-            ]
+                "https://dashboard-two-murex-93kzyvrvas.vercel.app"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
         }
     }, supports_credentials=True)
 
