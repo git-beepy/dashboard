@@ -30,8 +30,8 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const endpoint = user?.role === 'admin'
-        ? `${API_BASE_URL}/api/dashboard/admin`
-        : `${API_BASE_URL}/api/dashboard/embaixadora`;
+        ? `${API_BASE_URL}/dashboard/admin`
+        : `${API_BASE_URL}/dashboard/ambassador`;
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -58,7 +58,7 @@ const Dashboard = () => {
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/indications`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/indications`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -205,32 +205,32 @@ const Dashboard = () => {
       blue: '#3B82F6'
     };
 
-    const indicationsByMonth = Object.entries(dashboardData?.indicationsByMonth || {}).map(([month, count]) => ({
-      month: month.split('-')[1],
-      indicacoes: count
-    }));
+    const indicationsByMonth = dashboardData?.charts?.indicationsMonthly?.map(item => ({
+      month: item.month,
+      indicacoes: item.count
+    })) || [];
 
-    const leadsByOrigin = Object.entries(dashboardData?.leadsByOrigin || {}).map(([origin, count]) => ({
-      origem: origin,
-      leads: count
-    }));
+    const leadsByOrigin = dashboardData?.charts?.leadsOrigin?.map(item => ({
+      origem: item.name,
+      leads: item.value
+    })) || [];
 
-    const conversionData = Object.entries(dashboardData?.conversionBySegment || {}).map(([segment, data]) => ({
-      name: segment,
-      value: data.converted,
-      total: data.total,
-      percentage: ((data.converted / data.total) * 100).toFixed(1)
-    }));
+    const conversionData = dashboardData?.charts?.conversionBySegment?.map(item => ({
+      name: item.segment,
+      value: item.converted,
+      total: item.total,
+      percentage: item.rate
+    })) || [];
 
-    const salesByMonth = Object.entries(dashboardData?.salesByMonth || {}).map(([month, value]) => ({
-      month: month.split('-')[1],
-      vendas: value
-    }));
+    const salesByMonth = dashboardData?.charts?.salesMonthly?.map(item => ({
+      month: item.month,
+      vendas: item.value
+    })) || [];
 
-    const topAmbassadors = Object.entries(dashboardData?.topAmbassadorsByIndications || {}).slice(0, 10).map(([id, count]) => ({
-      embaixadora: `Emb ${id.slice(-4)}`,
-      indicacoes: count
-    }));
+    const topAmbassadors = dashboardData?.charts?.topAmbassadors?.map(item => ({
+      embaixadora: item.name,
+      indicacoes: item.indications
+    })) || [];
 
     return (
       <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
@@ -257,7 +257,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">COMISSÕES DO MÊS</p>
-                <p className="text-black text-2xl font-bold mt-1">R$ {dashboardData?.totalCommissions?.toLocaleString('pt-BR') || '6.300'},00</p>
+                <p className="text-black text-2xl font-bold mt-1">R$ {dashboardData?.stats?.monthlyCommissions?.toLocaleString('pt-BR') || '0'},00</p>
               </div>
               <DollarSign className="h-8 w-8 text-black/80" />
             </div>
@@ -267,7 +267,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">CONVERSÃO INDICAÇÕES</p>
-                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.conversionRate || 36.2}%</p>
+                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.stats?.activePercentage || 0}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-black/80" />
             </div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">TOTAL DE INDICAÇÕES</p>
-                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.totalIndications || 36}</p>
+                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.stats?.totalIndications || 0}</p>
               </div>
               <Target className="h-8 w-8 text-black/80" />
             </div>
@@ -287,7 +287,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">EMBAIXADORAS ATIVAS</p>
-                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.activeAmbassadors || 29}</p>
+                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.stats?.activeAmbassadors || 0}</p>
               </div>
               <Users className="h-8 w-8 text-black/80" />
             </div>
@@ -307,8 +307,8 @@ const Dashboard = () => {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Ativas', value: 38.2, fill: COLORS.purple },
-                        { name: 'Não Ativas', value: 61.8, fill: '#E5E7EB' }
+                        { name: 'Ativas', value: dashboardData?.stats?.activePercentage || 0, fill: COLORS.purple },
+                        { name: 'Não Ativas', value: 100 - (dashboardData?.stats?.activePercentage || 0), fill: '#E5E7EB' }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -323,7 +323,7 @@ const Dashboard = () => {
                 </ResponsiveContainer>
               </div>
               <div className="mt-4 text-center">
-                <p className="text-sm text-gray-600">ATIVAS: 38,2% | NÃO ATIVA: 61,8%</p>
+                <p className="text-sm text-gray-600">ATIVAS: {dashboardData?.stats?.activePercentage || 0}% | NÃO ATIVA: {100 - (dashboardData?.stats?.activePercentage || 0)}%</p>
               </div>
             </CardContent>
           </Card>

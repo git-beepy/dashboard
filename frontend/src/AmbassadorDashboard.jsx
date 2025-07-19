@@ -28,7 +28,7 @@ const AmbassadorDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('/api/dashboard/ambassador', {
+      const response = await fetch('/dashboard/ambassador', {
         credentials: 'include'
       });
       if (response.ok) {
@@ -44,7 +44,7 @@ const AmbassadorDashboard = () => {
 
   const fetchIndications = async () => {
     try {
-      const response = await fetch('/api/indications', {
+      const response = await fetch('/indications', {
         credentials: 'include'
       });
       if (response.ok) {
@@ -59,7 +59,7 @@ const AmbassadorDashboard = () => {
   const handleSubmitIndication = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/indications', {
+      const response = await fetch('/indications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

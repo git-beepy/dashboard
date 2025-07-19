@@ -23,7 +23,7 @@ const Indications = () => {
 
   const fetchIndications = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/indications`);
+      const response = await axios.get(`${API_BASE_URL}/indications`);
       setIndications(response.data);
     } catch (error) {
       console.error('Erro ao buscar indicações:', error);
@@ -37,9 +37,9 @@ const Indications = () => {
     
     try {
       if (editingIndication) {
-        await axios.put(`${API_BASE_URL}/api/indications/${editingIndication.id}`, formData);
+        await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, formData);
       } else {
-        await axios.post(`${API_BASE_URL}/api/indications`, formData);
+        await axios.post(`${API_BASE_URL}/indications`, formData);
       }
       
       fetchIndications();
@@ -72,7 +72,7 @@ const Indications = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Tem certeza que deseja excluir esta indicação?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/indications/${id}`);
+        await axios.delete(`${API_BASE_URL}/indications/${id}`);
         fetchIndications();
       } catch (error) {
         console.error('Erro ao excluir indicação:', error);
@@ -82,7 +82,7 @@ const Indications = () => {
 
   const toggleConversion = async (indication) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/indications/${indication.id}`, {
+      await axios.put(`${API_BASE_URL}/indications/${indication.id}`, {
         converted: !indication.converted
       });
       fetchIndications();

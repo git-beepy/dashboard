@@ -47,12 +47,11 @@ except Exception as e:
             print("Firebase conectado com arquivo local!")
         else:
             print("Arquivo de credenciais local não encontrado")
-            db = None
-    except Exception as e2:
-        print(f"Erro ao conectar Firebase com arquivo local: {e2}")
+    except Exception as e:
+        print(f"Erro no fallback Firebase: {e}")
         db = None
 
-# Criar aplicação Flask
+# Inicializar Flask
 app = Flask(__name__)
 
 # Configurações do Flask
@@ -63,22 +62,15 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 # Inicializar JWT
 jwt = JWTManager(app)
 
-
 # Configurar CORS para lidar com credenciais
-# CORS(app, supports_credentials=True, origins="*") # Comentado para implementação manual
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-    response.headers.add("Access-Control-Allow-Credentials", "true")
-    return response
-
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 # Rotas de autenticação
-@app.route("/api/auth/login", methods=["POST"])
+@app.route("/auth/login", methods=["POST", "OPTIONS"])
 def login():
+    if request.method == "OPTIONS":
+        return "", 200
+    
     try:
         # Verificar se há dados JSON
         if not request.is_json:
@@ -182,9 +174,12 @@ def login():
 
 
 # Rota para verificar token
-@app.route("/api/auth/verify", methods=["GET"])
+@app.route("/auth/verify", methods=["GET", "OPTIONS"])
 @jwt_required()
 def verify_token():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         current_user_id = get_jwt_identity()
         if not db:
@@ -213,9 +208,12 @@ def verify_token():
 
 
 # Rotas de indicações
-@app.route("/api/indications", methods=["GET"])
+@app.route("/indications", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_indications():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -252,9 +250,12 @@ def get_indications():
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/indications", methods=["POST"])
+@app.route("/indications", methods=["POST", "OPTIONS"])
 @jwt_required()
 def create_indication():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -297,9 +298,12 @@ def create_indication():
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/indications/<indication_id>", methods=["PUT"])
+@app.route("/indications/<indication_id>", methods=["PUT", "OPTIONS"])
 @jwt_required()
 def update_indication(indication_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -319,9 +323,12 @@ def update_indication(indication_id):
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/indications/<indication_id>", methods=["DELETE"])
+@app.route("/indications/<indication_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_indication(indication_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -334,9 +341,12 @@ def delete_indication(indication_id):
 
 
 # Rotas de usuários (apenas admin)
-@app.route("/api/users", methods=["GET"])
+@app.route("/users", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_users():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -358,7 +368,8 @@ def get_users():
         for doc in docs:
             user_data = doc.to_dict()
             user_data["id"] = doc.id
-            del user_data["password"]  # Não retornar senha
+            # Remover senha se existir
+            user_data.pop("password", None)  # Remove password se existir, senão ignora
             user_data = serialize_firestore_data(user_data)
             users.append(user_data)
 
@@ -369,9 +380,12 @@ def get_users():
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/users", methods=["POST"])
+@app.route("/users", methods=["POST", "OPTIONS"])
 @jwt_required()
 def create_user():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -387,22 +401,43 @@ def create_user():
             return safe_jsonify({"error": "Acesso negado"}, 403)
 
         data = request.get_json()
+        
+        if not data:
+            return safe_jsonify({"error": "Dados não fornecidos"}, 400)
+
+        # Validar campos obrigatórios
+        email = data.get("email")
+        password = data.get("password")
+        name = data.get("name")
+        role = data.get("role")
+
+        if not email:
+            return safe_jsonify({"error": "Email é obrigatório"}, 400)
+        
+        if not password:
+            return safe_jsonify({"error": "Senha é obrigatória"}, 400)
+            
+        if not name:
+            return safe_jsonify({"error": "Nome é obrigatório"}, 400)
+            
+        if not role:
+            return safe_jsonify({"error": "Função é obrigatória"}, 400)
 
         # Verificar se email já existe
-        query = db.collection("users").where(field_path="email", op_string="==", value=data.get("email")).limit(1)
+        query = db.collection("users").where(field_path="email", op_string="==", value=email).limit(1)
         existing_users = list(query.stream())
 
         if existing_users:
             return safe_jsonify({"error": "Email já está em uso"}, 400)
 
         # Criar hash da senha
-        hashed_password = bcrypt.hashpw(data.get("password").encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         new_user_data = {
-            "email": data.get("email"),
+            "email": email,
             "password": hashed_password,
-            "name": data.get("name"),
-            "role": data.get("role"),
+            "name": name,
+            "role": role,
             "phone": data.get("phone", ""),
             "createdAt": datetime.now(),
             "lastActiveAt": datetime.now()
@@ -413,6 +448,7 @@ def create_user():
         del new_user_data["password"]
         new_user_data = serialize_firestore_data(new_user_data)
 
+        print(f"Usuário criado com sucesso: {email}")
         return safe_jsonify(new_user_data, 201)
 
     except Exception as e:
@@ -421,9 +457,12 @@ def create_user():
 
 
 # Rotas de comissões
-@app.route("/api/commissions", methods=["GET"])
+@app.route("/commissions", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_commissions():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -458,9 +497,12 @@ def get_commissions():
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/commissions", methods=["POST"])
+@app.route("/commissions", methods=["POST", "OPTIONS"])
 @jwt_required()
 def create_commission():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -488,9 +530,12 @@ def create_commission():
 
 
 # Rotas de dashboard
-@app.route("/api/dashboard/admin", methods=["GET"])
+@app.route("/dashboard/admin", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_admin_dashboard():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -526,12 +571,135 @@ def get_admin_dashboard():
             if created_at and created_at.month == current_month and created_at.year == current_year:
                 monthly_commissions += commission_data.get("value", 0)
 
+        # Dados para gráficos
+        # 1. Indicações mês a mês (últimos 6 meses)
+        indications_monthly = []
+        all_indications = list(db.collection("indications").stream())
+        
+        for i in range(6):
+            month_date = datetime.now() - timedelta(days=30*i)
+            month_count = 0
+            for indication_doc in all_indications:
+                indication_data = indication_doc.to_dict()
+                created_at = indication_data.get("createdAt")
+                if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
+                    month_count += 1
+            indications_monthly.append({
+                "month": month_date.strftime("%b"),
+                "count": month_count
+            })
+        
+        # 2. Leads por origem
+        origins_data = {}
+        for indication_doc in all_indications:
+            indication_data = indication_doc.to_dict()
+            origin = indication_data.get("origin", "website")
+            origins_data[origin] = origins_data.get(origin, 0) + 1
+        
+        leads_origin = [{"name": k, "value": v} for k, v in origins_data.items()]
+        
+        # 3. Conversão por segmento
+        segments_data = {}
+        converted_segments = {}
+        for indication_doc in all_indications:
+            indication_data = indication_doc.to_dict()
+            segment = indication_data.get("segment", "geral")
+            converted = indication_data.get("converted", False)
+            
+            segments_data[segment] = segments_data.get(segment, 0) + 1
+            if converted:
+                converted_segments[segment] = converted_segments.get(segment, 0) + 1
+        
+        conversion_by_segment = []
+        for segment, total in segments_data.items():
+            converted = converted_segments.get(segment, 0)
+            conversion_rate = (converted / total * 100) if total > 0 else 0
+            conversion_by_segment.append({
+                "segment": segment,
+                "total": total,
+                "converted": converted,
+                "rate": round(conversion_rate, 1)
+            })
+        
+        # 4. Vendas mês a mês (comissões como proxy)
+        sales_monthly = []
+        for i in range(6):
+            month_date = datetime.now() - timedelta(days=30*i)
+            month_sales = 0
+            for commission_doc in all_commissions:
+                commission_data = commission_doc.to_dict()
+                created_at = commission_data.get("createdAt")
+                if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
+                    month_sales += commission_data.get("value", 0)
+            sales_monthly.append({
+                "month": month_date.strftime("%b"),
+                "value": month_sales
+            })
+        
+        # 5. Top embaixadoras por volume de indicação
+        all_users = list(db.collection("users").stream())
+        ambassador_stats = {}
+        
+        for user_doc in all_users:
+            user_data = user_doc.to_dict()
+            if user_data.get("role") == "embaixadora":
+                user_id = user_doc.id
+                user_name = user_data.get("name", "Sem nome")
+                
+                # Contar indicações desta embaixadora
+                user_indications = 0
+                for indication_doc in all_indications:
+                    indication_data = indication_doc.to_dict()
+                    if indication_data.get("ambassadorId") == user_id:
+                        user_indications += 1
+                
+                if user_indications > 0:
+                    ambassador_stats[user_name] = user_indications
+        
+        # Ordenar por volume e pegar top 5
+        top_ambassadors = sorted(ambassador_stats.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_ambassadors_data = [{"name": name, "indications": count} for name, count in top_ambassadors]
+        
+        # 6. Embaixadoras ativas (últimos 60 dias)
+        sixty_days_ago = datetime.now() - timedelta(days=60)
+        active_ambassadors = 0
+        total_ambassadors = 0
+        
+        for user_doc in all_users:
+            user_data = user_doc.to_dict()
+            if user_data.get("role") == "embaixadora":
+                total_ambassadors += 1
+                
+                # Verificar se tem indicações nos últimos 60 dias
+                has_recent_activity = False
+                for indication_doc in all_indications:
+                    indication_data = indication_doc.to_dict()
+                    if indication_data.get("ambassadorId") == user_doc.id:
+                        created_at = indication_data.get("createdAt")
+                        if created_at and created_at >= sixty_days_ago:
+                            has_recent_activity = True
+                            break
+                
+                if has_recent_activity:
+                    active_ambassadors += 1
+        
+        active_percentage = (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
+
         dashboard_data["stats"] = {
             "totalUsers": users_count,
             "totalIndications": indications_count,
             "totalCommissions": commissions_count,
             "monthlyCommissions": monthly_commissions,
-            "activeAmbassadors": users_count - 1  # Excluir admin
+            "activeAmbassadors": active_ambassadors,
+            "activePercentage": round(active_percentage, 1)
+        }
+        
+        dashboard_data["charts"] = {
+            "indicationsMonthly": list(reversed(indications_monthly)),
+            "leadsOrigin": leads_origin,
+            "conversionBySegment": conversion_by_segment,
+            "salesMonthly": list(reversed(sales_monthly)),
+            "topAmbassadors": top_ambassadors_data
         }
 
         dashboard_data = serialize_firestore_data(dashboard_data)
@@ -542,9 +710,12 @@ def get_admin_dashboard():
         return safe_jsonify({"error": str(e)}, 500)
 
 
-@app.route("/api/dashboard/ambassador", methods=["GET"])
+@app.route("/dashboard/ambassador", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_ambassador_dashboard():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -592,8 +763,11 @@ def get_ambassador_dashboard():
 
 
 # Rota para criar usuário admin inicial
-@app.route("/api/setup", methods=["POST"])
+@app.route("/setup", methods=["POST", "OPTIONS"])
 def setup_admin():
+    if request.method == "OPTIONS":
+        return "", 200
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -630,19 +804,19 @@ def setup_admin():
 def home():
     return safe_jsonify({
         "message": "Beepy API - Sistema de Indicações e Comissões",
-        "version": "3.2",
+        "version": "3.3",
         "status": "online",
         "cors_configured": True,
         "gunicorn_compatible": True,
         "endpoints": [
-            "/api/auth/login",
-            "/api/auth/verify",
-            "/api/indications",
-            "/api/commissions",
-            "/api/users",
-            "/api/dashboard/admin",
-            "/api/dashboard/ambassador",
-            "/api/setup",
+            "/auth/login",
+            "/auth/verify",
+            "/indications",
+            "/commissions",
+            "/users",
+            "/dashboard/admin",
+            "/dashboard/ambassador",
+            "/setup",
             "/health"
         ]
     })
@@ -664,5 +838,41 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
 
+
+
+@app.route("/users/<user_id>", methods=["DELETE", "OPTIONS"])
+@jwt_required()
+def delete_user(user_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        current_user_id = get_jwt_identity()
+        user_doc = db.collection("users").document(current_user_id).get()
+
+        if not user_doc.exists:
+            return safe_jsonify({"error": "Usuário não encontrado"}, 404)
+
+        user_data = user_doc.to_dict()
+        if user_data["role"] != "admin":
+            return safe_jsonify({"error": "Acesso negado"}, 403)
+
+        # Verificar se o usuário a ser excluído existe
+        target_user_doc = db.collection("users").document(user_id).get()
+        if not target_user_doc.exists:
+            return safe_jsonify({"error": "Usuário a ser excluído não encontrado"}, 404)
+
+        # Não permitir que um admin exclua a si mesmo
+        if user_id == current_user_id:
+            return safe_jsonify({"error": "Você não pode excluir seu próprio usuário"}, 400)
+
+        db.collection("users").document(user_id).delete()
+        return safe_jsonify({"message": "Usuário excluído com sucesso"}, 200)
+    except Exception as e:
+        print(f"Erro ao excluir usuário: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
 
 

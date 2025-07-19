@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Configurar URL base da API
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000';
 
   // Configurar axios defaults
   useEffect(() => {
@@ -211,6 +211,7 @@ export const AuthProvider = ({ children }) => {
     clearError,
     API_BASE_URL,
     isAuthenticated,
+    token: localStorage.getItem('token'),
   };
 
   return (

@@ -33,7 +33,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('/api/dashboard/admin', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/admin`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -49,7 +49,7 @@ const AdminDashboard = () => {
 
   const fetchIndications = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/indications`);
+      const response = await axios.get(`${API_BASE_URL}/indications`);
       setIndications(response.data);
     } catch (error) {
       console.error('Erro ao buscar indicações:', error);
@@ -58,7 +58,7 @@ const AdminDashboard = () => {
 
   const fetchCommissions = async () => {
     try {
-      const response = await fetch('/api/commissions', {
+      const response = await fetch(`${API_BASE_URL}/commissions`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -72,7 +72,7 @@ const AdminDashboard = () => {
 
   const updateIndicationStatus = async (indicationId, newStatus) => {
     try {
-      const response = await fetch(`/api/indications/${indicationId}`, {
+      const response = await fetch(`${API_BASE_URL}/indications/${indicationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +93,7 @@ const AdminDashboard = () => {
 
   const markCommissionAsPaid = async (commissionId) => {
     try {
-      const response = await fetch(`/api/commissions/${commissionId}/pay`, {
+      const response = await fetch(`${API_BASE_URL}/commissions/${commissionId}/pay`, {
         method: 'PUT',
         credentials: 'include',
       });
@@ -128,7 +128,7 @@ const AdminDashboard = () => {
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE_URL}/api/indications`, formData);
+      await axios.post(`${API_BASE_URL}/indications`, formData);
       fetchIndications(); // Refresh indications list
       setShowModal(false);
       setFormData({
