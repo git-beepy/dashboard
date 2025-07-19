@@ -63,8 +63,17 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 # Inicializar JWT
 jwt = JWTManager(app)
 
+
 # Configurar CORS para lidar com credenciais
-CORS(app, supports_credentials=True, origins="*")
+# CORS(app, supports_credentials=True, origins="*") # Comentado para implementação manual
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
 
 
 # Rotas de autenticação
