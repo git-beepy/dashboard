@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: beepy-api
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    buildFilter:
+      paths:
+        - backend/**

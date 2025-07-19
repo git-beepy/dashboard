@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.5rem;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: #1f2937; /* Cinza escuro forte como base */
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Regras globais para forçar texto visível */
+* {
+  color: #000000;
+}
+
+/* Regras específicas para o dashboard e cards */
+.dashboard {
+  color: #000000;
+}
+
+.dashboard .card,
+.dashboard .taxa-conversao,
+.dashboard .lista-usuarios {
+  color: #000000;
+}
+
+.dashboard .card p,
+.dashboard .card span,
+.dashboard .lista-usuarios p,
+.dashboard .lista-usuarios span,
+.dashboard .lista-usuarios li {
+  color: #000000 !important;
+}
+
+/* Ajuste para elementos com fundo branco */
+.bg-white p,
+.bg-white span,
+.bg-white li,
+.bg-white * {
+  color: #000000 !important;
+}
