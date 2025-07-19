@@ -20,10 +20,10 @@ if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
     except __import__("json").JSONDecodeError:
         # Fallback para o arquivo local se a variável de ambiente não for um JSON válido
         # (Isso não deve acontecer se o JSON for copiado corretamente para a variável)
-        cred = credentials.Certificate("projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
+        credentials.Certificate("backend/projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
 else:
     # Fallback para o arquivo local se a variável de ambiente não estiver definida
-    cred = credentials.Certificate("projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
+    credentials.Certificate("backend/projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
