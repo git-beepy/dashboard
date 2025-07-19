@@ -4,6 +4,7 @@
 - [x] Adicionar funcionalidade de alteração de status para indicações, comissões e usuários (ativo/inativo)
 - [x] Expandir área de segmento com mais opções e campo manual
 - [x] Adicionar coluna ID do usuário na página de usuários para uso em comissões
+- [ ] Poder alterar o status da indicação (Convertida/Pendente) diretamente na interface
 
 ## Implementações Realizadas
 
