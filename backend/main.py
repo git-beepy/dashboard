@@ -21,7 +21,7 @@ try:
         if isinstance(creds, str) and creds.startswith("{"):
             import tempfile
             import json as json_module
-            
+
             # Validar se é JSON válido
             try:
                 json_module.loads(creds)
@@ -33,7 +33,7 @@ try:
                 print("Credenciais Firebase configuradas via variável de ambiente")
             except json_module.JSONDecodeError:
                 print("Erro: GOOGLE_APPLICATION_CREDENTIALS não é um JSON válido")
-    
+
     db = firestore.Client()
     print("Firebase conectado com sucesso!")
 except Exception as e:
@@ -66,7 +66,8 @@ jwt = JWTManager(app)
 # Configurar CORS para lidar com credenciais
 CORS(app,
      supports_credentials=True,
-     origins=["https://dashboard-two-murex-93kzyvrvas.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+     origins=["https://dashboard-lcgemgzdf-git-beepyjs-projects.vercel.app",
+              "https://dashboard-two-murex-93kzyvrvas.vercel.app", "http://localhost:3000", "http://localhost:5173"],
      allow_headers=["Content-Type", "Authorization", "Accept"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
@@ -711,4 +712,6 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
+
 
