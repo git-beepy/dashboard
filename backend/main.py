@@ -66,7 +66,8 @@ jwt = JWTManager(app)
 # Configurar CORS para lidar com credenciais
 CORS(app,
      supports_credentials=True,
-     origins=["https://dashboard-lcgemgzdf-git-beepyjs-projects.vercel.app",
+     origins=["https://dashboard-fy7kd0d9-git-beepyjs-projects.vercel.app",
+              "https://dashboard-lcgemgzdf-git-beepyjs-projects.vercel.app",
               "https://dashboard-two-murex-93kzyvrvas.vercel.app", "http://localhost:3000", "http://localhost:5173"],
      allow_headers=["Content-Type", "Authorization", "Accept"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
