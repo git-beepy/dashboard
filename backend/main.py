@@ -64,66 +64,7 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 jwt = JWTManager(app)
 
 # Configurar CORS para lidar com credenciais
-CORS(app,
-     supports_credentials=True,
-     origins=["https://dashboard-fy7kd0d9-git-beepyjs-projects.vercel.app",
-              "https://dashboard-lcgemgzdf-git-beepyjs-projects.vercel.app",
-              "https://dashboard-two-murex-93kzyvrvas.vercel.app", "http://localhost:3000", "http://localhost:5173"],
-     allow_headers=["Content-Type", "Authorization", "Accept"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-
-
-# Middleware para logs de debug e tratamento de CORS específico
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = app.make_default_options_response()
-        headers = response.headers
-
-        # Obter origem da requisição
-        origin = request.headers.get('Origin')
-        allowed_origins = [
-            "https://dashboard-two-murex-93kzyvrvas.vercel.app",
-            "http://localhost:3000",
-            "http://localhost:5173"
-        ]
-
-        if origin in allowed_origins:
-            headers['Access-Control-Allow-Origin'] = origin
-        else:
-            headers['Access-Control-Allow-Origin'] = allowed_origins[0]  # Default para produção
-
-        headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
-        headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
-
-    print(f"Request: {request.method} {request.url}")
-    print(f"Origin: {request.headers.get('Origin', 'No Origin')}")
-    print(f"Headers: {dict(request.headers)}")
-    if request.get_json(silent=True):
-        print(f"Body: {request.get_json()}")
-
-
-@app.after_request
-def after_request(response):
-    # Obter origem da requisição
-    origin = request.headers.get('Origin')
-    allowed_origins = [
-        "https://dashboard-two-murex-93kzyvrvas.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:5173"
-    ]
-
-    if origin in allowed_origins:
-        response.headers['Access-Control-Allow-Origin'] = origin
-    else:
-        response.headers['Access-Control-Allow-Origin'] = allowed_origins[0]  # Default para produção
-
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    return response
+CORS(app, supports_credentials=True, origins="*")
 
 
 # Rotas de autenticação
