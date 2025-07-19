@@ -1,53 +1,55 @@
 import os
 import json
-import firebase_admin
-from firebase_admin import credentials, firestore
+import bcrypt
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from datetime import datetime, timedelta
-import bcrypt
-from utils import CustomJSONEncoder, safe_jsonify, serialize_firestore_data
-
-# Inicializar Firebase
-try:
-    if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        # Tentar carregar das variáveis de ambiente primeiro
-        cred_json = json.loads(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
-        cred = credentials.Certificate(cred_json)
-    else:
-        # Fallback para arquivo local
-        cred = credentials.Certificate("projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
-    
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-except Exception as e:
-    print(f"Erro ao inicializar Firebase: {e}")
-    # Fallback para arquivo local se houver erro
-    try:
-        cred = credentials.Certificate("projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json")
-        firebase_admin.initialize_app(cred)
-        db = firestore.client()
-    except Exception as e2:
-        print(f"Erro crítico ao inicializar Firebase: {e2}")
-        raise
+from google.cloud import firestore
+from utils import serialize_firestore_data, safe_jsonify
 
 
 def create_app():
     flask_app = Flask(__name__)
 
-    flask_app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "beepy-secret-key-2024")
-    flask_app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "beepy-jwt-secret-key-2024")
+    # Configurações
+    flask_app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+    flask_app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-key-change-in-production")
     flask_app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
 
     jwt = JWTManager(flask_app)
-    
+
     # Configurar CORS mais permissivo
-    CORS(flask_app, 
-         supports_credentials=True, 
+    CORS(flask_app,
+         supports_credentials=True,
          origins="*",
          allow_headers=["Content-Type", "Authorization", "Accept"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+    # Inicializar Firebase
+    try:
+        # Tentar usar credenciais do ambiente primeiro
+        if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            # Se for string JSON, converter para dict
+            creds = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            if isinstance(creds, str) and creds.startswith("{"):
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    f.write(creds)
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
+
+        db = firestore.Client()
+        print("Firebase conectado com sucesso!")
+    except Exception as e:
+        print(f"Erro ao conectar Firebase: {e}")
+        # Tentar usar arquivo local
+        try:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json"
+            db = firestore.Client()
+            print("Firebase conectado com arquivo local!")
+        except Exception as e2:
+            print(f"Erro ao conectar Firebase com arquivo local: {e2}")
+            db = None
 
     # Middleware para logs de debug e tratamento de CORS
     @flask_app.before_request
@@ -59,7 +61,7 @@ def create_app():
             headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
             headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
             return response
-        
+
         print(f"Request: {request.method} {request.url}")
         print(f"Headers: {dict(request.headers)}")
         if request.get_json(silent=True):
@@ -72,17 +74,18 @@ def create_app():
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
         return response
 
+    # Rotas de autenticação
     @flask_app.route("/api/auth/login", methods=["POST"])
     def login():
         try:
             # Verificar se há dados JSON
             if not request.is_json:
                 return safe_jsonify({"error": "Content-Type deve ser application/json"}, 400)
-                
+
             data = request.get_json()
             if not data:
                 return safe_jsonify({"error": "Dados não fornecidos"}, 400)
-                
+
             email = data.get("email")
             password = data.get("password")
 
@@ -90,6 +93,9 @@ def create_app():
                 return safe_jsonify({"error": "Email e senha são obrigatórios"}, 400)
 
             print(f"Tentativa de login para: {email}")
+
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
 
             # Buscar usuário no Firestore
             users_ref = db.collection("users")
@@ -114,7 +120,7 @@ def create_app():
                 # Verificar se a senha está em hash bcrypt
                 if bcrypt.checkpw(password.encode("utf-8"), stored_password.encode("utf-8")):
                     print("Senha verificada com sucesso")
-                    
+
                     # Criar token JWT
                     access_token = create_access_token(
                         identity=user_doc.id,
@@ -139,13 +145,13 @@ def create_app():
                 else:
                     print("Senha incorreta")
                     return safe_jsonify({"error": "Senha incorreta"}, 401)
-                    
+
             except Exception as e:
                 print(f"Erro ao verificar senha: {e}")
                 # Tentar comparação direta (para senhas não hasheadas)
                 if password == stored_password:
                     print("Senha verificada (comparação direta)")
-                    
+
                     access_token = create_access_token(
                         identity=user_doc.id,
                         additional_claims={
@@ -178,11 +184,14 @@ def create_app():
     def verify_token():
         try:
             current_user_id = get_jwt_identity()
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
-            
+
             user_data = user_doc.to_dict()
             response_data = {
                 "user": {
@@ -192,21 +201,24 @@ def create_app():
                     "name": user_data.get("name", "")
                 }
             }
-            
+
             return safe_jsonify(response_data, 200)
-            
+
         except Exception as e:
             print(f"Erro na verificação do token: {str(e)}")
-            return safe_jsonify({"error": "Token inválido"}, 401)
+            return safe_jsonify({"error": str(e)}, 500)
 
     # Rotas de indicações
     @flask_app.route("/api/indications", methods=["GET"])
     @jwt_required()
     def get_indications():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -217,7 +229,8 @@ def create_app():
                 indications_ref = db.collection("indications")
             else:
                 # Se for embaixadora, retorna apenas suas indicações
-                indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==", value=current_user_id)
+                indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==",
+                                                                     value=current_user_id)
 
             docs = indications_ref.stream()
             indications = []
@@ -238,8 +251,20 @@ def create_app():
     @jwt_required()
     def create_indication():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             data = request.get_json()
+
+            if not data:
+                return safe_jsonify({"error": "Dados não fornecidos"}, 400)
+
+            # Validar campos obrigatórios
+            required_fields = ["clientName", "clientEmail", "clientPhone"]
+            for field in required_fields:
+                if not data.get(field):
+                    return safe_jsonify({"error": f"Campo {field} é obrigatório"}, 400)
 
             indication_data = {
                 "ambassadorId": current_user_id,
@@ -257,6 +282,7 @@ def create_app():
             indication_data["id"] = doc_ref[1].id
             indication_data = serialize_firestore_data(indication_data)
 
+            print(f"Indicação criada com sucesso: {indication_data['id']}")
             return safe_jsonify(indication_data, 201)
 
         except Exception as e:
@@ -267,6 +293,9 @@ def create_app():
     @jwt_required()
     def update_indication(indication_id):
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             data = request.get_json()
             update_data = {"updatedAt": datetime.now()}
 
@@ -285,6 +314,9 @@ def create_app():
     @jwt_required()
     def delete_indication(indication_id):
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             db.collection("indications").document(indication_id).delete()
             return safe_jsonify({"message": "Indicação excluída com sucesso"}, 200)
         except Exception as e:
@@ -296,9 +328,12 @@ def create_app():
     @jwt_required()
     def get_users():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -313,8 +348,7 @@ def create_app():
             for doc in docs:
                 user_data = doc.to_dict()
                 user_data["id"] = doc.id
-                if "password" in user_data:
-                    del user_data["password"]
+                del user_data["password"]  # Não retornar senha
                 user_data = serialize_firestore_data(user_data)
                 users.append(user_data)
 
@@ -328,9 +362,12 @@ def create_app():
     @jwt_required()
     def create_user():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -340,14 +377,8 @@ def create_app():
 
             data = request.get_json()
 
-            required_fields = ["email", "password", "name", "role"]
-            for field in required_fields:
-                if not data.get(field):
-                    return safe_jsonify({"error": f"{field} é obrigatório"}, 400)
-
             # Verificar se email já existe
-            users_ref = db.collection("users")
-            query = users_ref.where(field_path="email", op_string="==", value=data.get("email")).limit(1)
+            query = db.collection("users").where(field_path="email", op_string="==", value=data.get("email")).limit(1)
             existing_users = list(query.stream())
 
             if existing_users:
@@ -382,9 +413,12 @@ def create_app():
     @jwt_required()
     def get_commissions():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -393,7 +427,8 @@ def create_app():
             if user_data["role"] == "admin":
                 commissions_ref = db.collection("commissions")
             else:
-                commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==", value=current_user_id)
+                commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==",
+                                                                     value=current_user_id)
 
             docs = commissions_ref.stream()
             commissions = []
@@ -414,6 +449,9 @@ def create_app():
     @jwt_required()
     def create_commission():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             data = request.get_json()
 
             commission_data = {
@@ -440,9 +478,12 @@ def create_app():
     @jwt_required()
     def get_admin_dashboard():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -457,10 +498,26 @@ def create_app():
             indications_count = len(list(db.collection("indications").stream()))
             commissions_count = len(list(db.collection("commissions").stream()))
 
+            # Calcular comissões do mês
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+
+            commissions_ref = db.collection("commissions")
+            all_commissions = list(commissions_ref.stream())
+
+            monthly_commissions = 0
+            for commission_doc in all_commissions:
+                commission_data = commission_doc.to_dict()
+                created_at = commission_data.get("createdAt")
+                if created_at and created_at.month == current_month and created_at.year == current_year:
+                    monthly_commissions += commission_data.get("value", 0)
+
             dashboard_data["stats"] = {
                 "totalUsers": users_count,
                 "totalIndications": indications_count,
-                "totalCommissions": commissions_count
+                "totalCommissions": commissions_count,
+                "monthlyCommissions": monthly_commissions,
+                "activeAmbassadors": users_count - 1  # Excluir admin
             }
 
             dashboard_data = serialize_firestore_data(dashboard_data)
@@ -470,13 +527,16 @@ def create_app():
             print(f"Erro no dashboard admin: {str(e)}")
             return safe_jsonify({"error": str(e)}, 500)
 
-    @flask_app.route("/api/dashboard/embaixadora", methods=["GET"])
+    @flask_app.route("/api/dashboard/ambassador", methods=["GET"])
     @jwt_required()
     def get_ambassador_dashboard():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             current_user_id = get_jwt_identity()
             user_doc = db.collection("users").document(current_user_id).get()
-            
+
             if not user_doc.exists:
                 return safe_jsonify({"error": "Usuário não encontrado"}, 404)
 
@@ -487,16 +547,25 @@ def create_app():
             dashboard_data = {}
 
             # Indicações da embaixadora
-            indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==", value=current_user_id)
+            indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==",
+                                                                 value=current_user_id)
             indications = list(indications_ref.stream())
-            
+
             total_indications = len(indications)
             converted_indications = sum(1 for doc in indications if doc.to_dict().get("converted", False))
+
+            # Comissões da embaixadora
+            commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==",
+                                                                 value=current_user_id)
+            commissions = list(commissions_ref.stream())
+
+            total_commissions = sum(doc.to_dict().get("value", 0) for doc in commissions)
 
             dashboard_data["stats"] = {
                 "totalIndications": total_indications,
                 "convertedIndications": converted_indications,
-                "conversionRate": (converted_indications / total_indications * 100) if total_indications > 0 else 0
+                "conversionRate": (converted_indications / total_indications * 100) if total_indications > 0 else 0,
+                "totalCommissions": total_commissions
             }
 
             dashboard_data = serialize_firestore_data(dashboard_data)
@@ -510,6 +579,9 @@ def create_app():
     @flask_app.route("/api/setup", methods=["POST"])
     def setup_admin():
         try:
+            if not db:
+                return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
             # Verificar se já existe um admin
             users_ref = db.collection("users").where(field_path="role", op_string="==", value="admin").limit(1)
             docs = list(users_ref.stream())
@@ -530,6 +602,7 @@ def create_app():
             }
 
             db.collection("users").add(admin_data)
+            print("Usuário admin criado com sucesso!")
             return safe_jsonify({"message": "Usuário admin criado com sucesso"}, 201)
 
         except Exception as e:
@@ -541,12 +614,27 @@ def create_app():
         return safe_jsonify({
             "message": "Beepy API - Sistema de Indicações e Comissões",
             "version": "3.0",
-            "status": "online"
+            "status": "online",
+            "endpoints": [
+                "/api/auth/login",
+                "/api/auth/verify",
+                "/api/indications",
+                "/api/commissions",
+                "/api/users",
+                "/api/dashboard/admin",
+                "/api/dashboard/ambassador",
+                "/api/setup",
+                "/health"
+            ]
         })
 
     @flask_app.route("/health")
     def health():
-        return safe_jsonify({"status": "healthy", "service": "beepy-api"})
+        return safe_jsonify({
+            "status": "healthy",
+            "service": "beepy-api",
+            "firebase_connected": db is not None
+        })
 
     return flask_app
 
