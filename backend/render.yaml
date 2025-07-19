@@ -1,10 +1,16 @@
 services:
   - type: web
-    name: beepy-api
-    env: docker
+    name: beepy-backend
+    env: python
     plan: free
-    region: oregon
-    dockerfilePath: ./backend/Dockerfile
-    buildFilter:
-      paths:
-        - backend/**
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true # Será gerado no Render
+      - key: JWT_SECRET_KEY
+        generateValue: true # Será gerado no Render
+      - key: GOOGLE_APPLICATION_CREDENTIALS # <-- Esta variável deve ser configurada no Render
+        sync: false # Você precisará definir manualmente no painel do Render
