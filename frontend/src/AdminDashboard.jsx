@@ -49,7 +49,7 @@ const AdminDashboard = () => {
 
   const fetchIndications = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/indications`);
+      const response = await axios.get(`${API_BASE_URL}/api/indications`);
       setIndications(response.data);
     } catch (error) {
       console.error('Erro ao buscar indicações:', error);
@@ -128,7 +128,7 @@ const AdminDashboard = () => {
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE_URL}/indications`, formData);
+      await axios.post(`${API_BASE_URL}/api/indications`, formData);
       fetchIndications(); // Refresh indications list
       setShowModal(false);
       setFormData({

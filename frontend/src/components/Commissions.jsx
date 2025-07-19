@@ -24,7 +24,7 @@ const Commissions = () => {
 
   const fetchCommissions = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/commissions`);
+      const response = await axios.get(`${API_BASE_URL}/api/commissions`);
       setCommissions(response.data);
     } catch (error) {
       console.error('Erro ao buscar comissões:', error);
@@ -35,7 +35,7 @@ const Commissions = () => {
 
   const fetchIndications = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/indications`);
+      const response = await axios.get(`${API_BASE_URL}/api/indications`);
       setIndications(response.data.filter(ind => ind.converted));
     } catch (error) {
       console.error('Erro ao buscar indicações:', error);
@@ -47,9 +47,9 @@ const Commissions = () => {
 
     try {
       if (editingCommission) {
-        await axios.put(`${API_BASE_URL}/commissions/${editingCommission.id}`, formData);
+        await axios.put(`${API_BASE_URL}/api/commissions/${editingCommission.id}`, formData);
       } else {
-        await axios.post(`${API_BASE_URL}/commissions`, formData);
+        await axios.post(`${API_BASE_URL}/api/commissions`, formData);
       }
 
       fetchCommissions();
@@ -80,7 +80,7 @@ const Commissions = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Tem certeza que deseja excluir esta comissão?')) {
       try {
-        await axios.delete(`${API_BASE_URL}/commissions/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/commissions/${id}`);
         fetchCommissions();
       } catch (error) {
         console.error('Erro ao excluir comissão:', error);
@@ -91,7 +91,7 @@ const Commissions = () => {
   const toggleStatus = async (commission) => {
     try {
       const newStatus = commission.status === 'paid' ? 'pending' : 'paid';
-      await axios.put(`${API_BASE_URL}/commissions/${commission.id}`, {
+      await axios.put(`${API_BASE_URL}/api/commissions/${commission.id}`, {
         status: newStatus
       });
       fetchCommissions();

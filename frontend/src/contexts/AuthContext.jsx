@@ -14,11 +14,18 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Configurar URL base da API
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000/api';
 
-  // Configurar interceptor para requests
+  // Configurar axios defaults
+  useEffect(() => {
+    axios.defaults.timeout = 15000; // 15 segundos
+    axios.defaults.headers.common['Content-Type'] = 'application/json';
+  }, []);
+
+  // Configurar interceptors
   useEffect(() => {
     const requestInterceptor = axios.interceptors.request.use(
       (config) => {
@@ -26,21 +33,31 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Log da requisição para debug
+        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
+        
         return config;
       },
       (error) => {
+        console.error('[API Request Error]', error);
         return Promise.reject(error);
       }
     );
 
-    // Configurar interceptor para responses
     const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        console.log(`[API Response] ${response.status} ${response.config.url}`);
+        return response;
+      },
       (error) => {
+        console.error('[API Response Error]', error.response?.status, error.response?.data);
+        
         if (error.response?.status === 401) {
-          // Token expirado ou inválido
+          console.log('Token expirado ou inválido, fazendo logout...');
           logout();
         }
+        
         return Promise.reject(error);
       }
     );
@@ -51,42 +68,61 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // Inicializar autenticação
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
+        setError(null);
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
         
         if (token && userData) {
           const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Verificar se o token ainda é válido
+          try {
+            const response = await axios.get(`${API_BASE_URL}/auth/verify`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (response.data.user) {
+              setUser(response.data.user);
+              console.log('Usuário autenticado:', response.data.user.email);
+            } else {
+              throw new Error('Resposta inválida do servidor');
+            }
+          } catch (verifyError) {
+            console.log('Token inválido, removendo dados de autenticação');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error('Erro ao inicializar autenticação:', error);
-        // Limpar dados corrompidos
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        setUser(null);
+        setError('Erro ao inicializar autenticação');
       } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
-  }, []);
+  }, [API_BASE_URL]);
 
   const login = async (email, password) => {
     try {
-      console.log('Tentando fazer login com:', { email, API_BASE_URL });
+      setError(null);
+      setLoading(true);
+      
+      console.log('Iniciando login para:', email);
+      console.log('URL da API:', `${API_BASE_URL}/auth/login`);
       
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
-        email,
-        password,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000, // 10 segundos de timeout
+        email: email.trim(),
+        password: password,
       });
 
       console.log('Resposta do login:', response.data);
@@ -94,20 +130,19 @@ export const AuthProvider = ({ children }) => {
       const { access_token, user: userData } = response.data;
 
       if (!access_token || !userData) {
-        throw new Error('Resposta inválida do servidor');
+        throw new Error('Resposta inválida do servidor - token ou dados do usuário ausentes');
       }
 
       // Salvar dados no localStorage
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       
-      // Configurar header de autorização
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
       // Atualizar estado
       setUser(userData);
 
+      console.log('Login realizado com sucesso para:', userData.email);
       return { success: true, user: userData };
+      
     } catch (error) {
       console.error('Erro no login:', error);
       
@@ -115,7 +150,18 @@ export const AuthProvider = ({ children }) => {
       
       if (error.response) {
         // Erro da API
-        errorMessage = error.response.data?.error || `Erro ${error.response.status}: ${error.response.statusText}`;
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 401) {
+          errorMessage = data?.error || 'Email ou senha incorretos';
+        } else if (status === 400) {
+          errorMessage = data?.error || 'Dados inválidos';
+        } else if (status >= 500) {
+          errorMessage = 'Erro interno do servidor. Tente novamente.';
+        } else {
+          errorMessage = data?.error || `Erro ${status}`;
+        }
       } else if (error.request) {
         // Erro de rede
         errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
@@ -127,19 +173,22 @@ export const AuthProvider = ({ children }) => {
         errorMessage = error.message || 'Erro desconhecido';
       }
 
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+      
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = () => {
     try {
+      console.log('Fazendo logout...');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      delete axios.defaults.headers.common['Authorization'];
       setUser(null);
+      setError(null);
+      console.log('Logout realizado com sucesso');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
@@ -149,11 +198,17 @@ export const AuthProvider = ({ children }) => {
     return !!user && !!localStorage.getItem('token');
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   const value = {
     user,
     login,
     logout,
     loading,
+    error,
+    clearError,
     API_BASE_URL,
     isAuthenticated,
   };

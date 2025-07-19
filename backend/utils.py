@@ -1,40 +1,32 @@
 import json
 from datetime import datetime
-from decimal import Decimal
-from firebase_admin import firestore
+from flask import jsonify
 
 
 class CustomJSONEncoder(json.JSONEncoder):
-    """Encoder JSON customizado para lidar com tipos especiais do Firebase e Python."""
-
+    """Encoder personalizado para serializar objetos datetime e outros tipos especiais"""
+    
     def default(self, obj):
-        # Converter datetime para string ISO 8601
         if isinstance(obj, datetime):
             return obj.isoformat()
+        return super().default(obj)
 
-        # Converter Timestamp do Firestore para string ISO 8601
-        if hasattr(obj, 'timestamp'):  # Firestore Timestamp
-            return obj.isoformat()
 
-        # Converter Decimal para float
-        if isinstance(obj, Decimal):
-            return float(obj)
-
-        # Converter DocumentReference do Firestore para string
-        if hasattr(obj, 'path'):  # Firestore DocumentReference
-            return obj.path
-
-        # Para outros tipos não serializáveis, tentar converter para string
-        try:
-            return str(obj)
-        except:
-            return super().default(obj)
+def safe_jsonify(data, status_code=200):
+    """Função helper para retornar JSON de forma segura"""
+    try:
+        response = jsonify(data)
+        response.status_code = status_code
+        return response
+    except Exception as e:
+        print(f"Erro ao serializar JSON: {e}")
+        error_response = jsonify({"error": "Erro interno do servidor"})
+        error_response.status_code = 500
+        return error_response
 
 
 def serialize_firestore_data(data):
-    """
-    Serializa dados do Firestore convertendo tipos especiais para tipos JSON-serializáveis.
-    """
+    """Serializa dados do Firestore para JSON"""
     if isinstance(data, dict):
         result = {}
         for key, value in data.items():
@@ -42,43 +34,11 @@ def serialize_firestore_data(data):
         return result
     elif isinstance(data, list):
         return [serialize_firestore_data(item) for item in data]
+    elif hasattr(data, 'timestamp'):
+        # Timestamp do Firestore
+        return data.timestamp()
     elif isinstance(data, datetime):
         return data.isoformat()
-    elif hasattr(data, 'timestamp'):  # Firestore Timestamp
-        return data.isoformat()
-    elif isinstance(data, Decimal):
-        return float(data)
-    elif hasattr(data, 'path'):  # Firestore DocumentReference
-        return data.path
     else:
         return data
-
-
-def safe_jsonify(data, status_code=200):
-    """
-    Função helper para retornar JSON de forma segura, lidando com tipos especiais.
-    """
-    from flask import Response
-
-    try:
-        # Primeiro, serializar os dados
-        serialized_data = serialize_firestore_data(data)
-
-        # Depois, converter para JSON usando o encoder customizado
-        json_string = json.dumps(serialized_data, cls=CustomJSONEncoder, ensure_ascii=False)
-
-        return Response(
-            json_string,
-            status=status_code,
-            mimetype='application/json'
-        )
-    except Exception as e:
-        # Em caso de erro, retornar erro de serialização
-        error_data = {"error": f"Erro de serialização JSON: {str(e)}"}
-        json_string = json.dumps(error_data, ensure_ascii=False)
-        return Response(
-            json_string,
-            status=500,
-            mimetype='application/json'
-        )
 

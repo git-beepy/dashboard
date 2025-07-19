@@ -1,7 +1,7 @@
 // src/App.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom'; // ✅ sem o BrowserRouter aqui
-import Login from './Login';
+import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Indications from './components/Indications';
 import Commissions from './components/Commissions';

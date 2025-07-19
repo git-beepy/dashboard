@@ -30,8 +30,8 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const endpoint = user?.role === 'admin'
-        ? `${API_BASE_URL}/dashboard/admin`
-        : `${API_BASE_URL}/dashboard/embaixadora`;
+        ? `${API_BASE_URL}/api/dashboard/admin`
+        : `${API_BASE_URL}/api/dashboard/embaixadora`;
 
       const response = await axios.get(endpoint, {
         headers: {
@@ -58,7 +58,7 @@ const Dashboard = () => {
   const handleModalSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_BASE_URL}/indications`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/api/indications`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

@@ -1,179 +1,200 @@
 # Sistema Beepy - Indicações e Comissões
 
-Sistema completo para gerenciamento de indicações e comissões de embaixadoras, desenvolvido com Flask (backend) e React (frontend).
+Sistema completo para gerenciamento de indicações e comissões de embaixadoras, desenvolvido com React (frontend) e Flask (backend), utilizando Firebase Firestore como banco de dados.
 
 ## 🚀 Funcionalidades
 
-- **Autenticação segura** com JWT
-- **Dashboard administrativo** com métricas e relatórios
-- **Dashboard de embaixadoras** com indicações pessoais
-- **Gestão de usuários** (admin e embaixadoras)
-- **Controle de indicações** com status de conversão
-- **Sistema de comissões** com controle de pagamentos
-- **Interface responsiva** e moderna
+### Para Administradores
+- Dashboard com estatísticas gerais
+- Gerenciamento de usuários (embaixadoras)
+- Visualização de todas as indicações
+- Controle de comissões
+- Relatórios e métricas
 
-## 📋 Pré-requisitos
+### Para Embaixadoras
+- Dashboard personalizado
+- Cadastro de indicações
+- Acompanhamento de conversões
+- Visualização de comissões
+- Histórico de atividades
 
-- Python 3.8+
-- Node.js 16+
-- npm ou yarn
-- Conta no Firebase (para Firestore)
+## 🛠️ Tecnologias Utilizadas
 
-## 🛠️ Instalação
+### Frontend
+- React 18
+- Vite
+- Tailwind CSS
+- Lucide React (ícones)
+- Axios (requisições HTTP)
+- React Router (navegação)
 
-### Backend (Flask)
+### Backend
+- Flask 3.0.3
+- Flask-CORS
+- Flask-JWT-Extended
+- Firebase Admin SDK
+- bcrypt (criptografia de senhas)
+- Gunicorn (servidor WSGI)
 
-1. Navegue até a pasta do backend:
-```bash
-cd backend
-```
+### Banco de Dados
+- Firebase Firestore
 
-2. Instale as dependências:
-```bash
-pip install -r requirements.txt
-```
-
-3. Configure o Firebase:
-   - Coloque o arquivo de credenciais do Firebase (`projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json`) na pasta `backend/`
-   - Certifique-se de que o Firestore está habilitado no seu projeto Firebase
-
-4. Execute o servidor:
-```bash
-python main.py
-```
-
-O backend estará disponível em `http://localhost:10000`
-
-### Frontend (React)
-
-1. Navegue até a pasta do frontend:
-```bash
-cd frontend
-```
-
-2. Instale as dependências:
-```bash
-npm install
-```
-
-3. Configure as variáveis de ambiente:
-   - Para desenvolvimento: arquivo `env` já está configurado
-   - Para produção: edite o arquivo `env.production`
-
-4. Execute o servidor de desenvolvimento:
-```bash
-npm run dev
-```
-
-O frontend estará disponível em `http://localhost:5173`
-
-## 🔧 Configuração
-
-### Variáveis de Ambiente
-
-**Frontend (.env):**
-```
-VITE_API_BASE_URL=http://localhost:10000/api
-```
-
-**Frontend (env.production):**
-```
-VITE_API_BASE_URL=https://sua-api.com/api
-```
-
-### Credenciais Padrão
-
-Para acessar o sistema pela primeira vez, use:
-- **Email:** admin@beepy.com
-- **Senha:** admin123
-
-## 📚 Estrutura do Projeto
+## 📦 Estrutura do Projeto
 
 ```
-projeto-beepy/
+projeto-beepy-unificado/
 ├── backend/
 │   ├── main.py                 # Aplicação Flask principal
-│   ├── utils.py               # Utilitários e encoder JSON
+│   ├── utils.py               # Utilitários e helpers
+│   ├── create_admin.py        # Script para criar admin
 │   ├── requirements.txt       # Dependências Python
+│   ├── render.yaml           # Configuração Render
 │   └── projeto-beepy-firebase-adminsdk-*.json
 ├── frontend/
 │   ├── src/
-│   │   ├── components/        # Componentes React
-│   │   ├── contexts/          # Context API (Auth)
-│   │   └── main.jsx          # Ponto de entrada
-│   ├── package.json          # Dependências Node.js
-│   └── vite.config.js        # Configuração Vite
-└── docs/                     # Documentação
+│   │   ├── components/       # Componentes React
+│   │   ├── contexts/        # Contextos (Auth, etc.)
+│   │   └── ...
+│   ├── package.json
+│   └── vite.config.js
+├── vercel.json              # Configuração Vercel
+└── README.md
 ```
 
-## 🔄 API Endpoints
+## 🔧 Configuração Local
 
-### Autenticação
-- `POST /api/auth/login` - Login de usuário
-- `POST /api/setup` - Criar usuário admin inicial
+### Pré-requisitos
+- Python 3.11+
+- Node.js 18+
+- Conta no Firebase
+- Credenciais do Firebase
 
-### Usuários
-- `GET /api/users` - Listar usuários (admin)
-- `POST /api/users` - Criar usuário (admin)
-- `PUT /api/users/:id` - Atualizar usuário (admin)
-- `DELETE /api/users/:id` - Deletar usuário (admin)
+### Backend
+1. Entre na pasta do backend:
+   ```bash
+   cd backend
+   ```
 
-### Indicações
-- `GET /api/indications` - Listar indicações
-- `POST /api/indications` - Criar indicação
-- `PUT /api/indications/:id` - Atualizar indicação
-- `DELETE /api/indications/:id` - Deletar indicação
+2. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### Comissões
-- `GET /api/commissions` - Listar comissões
-- `POST /api/commissions` - Criar comissão
-- `PUT /api/commissions/:id` - Atualizar comissão
-- `DELETE /api/commissions/:id` - Deletar comissão
+3. Configure as credenciais do Firebase:
+   - Coloque o arquivo de credenciais na pasta backend
+   - Ou configure a variável de ambiente `GOOGLE_APPLICATION_CREDENTIALS`
 
-### Dashboard
-- `GET /api/dashboard/admin` - Dashboard administrativo
-- `GET /api/dashboard/embaixadora` - Dashboard da embaixadora
+4. Execute o servidor:
+   ```bash
+   python main.py
+   ```
+
+### Frontend
+1. Entre na pasta do frontend:
+   ```bash
+   cd frontend
+   ```
+
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+
+3. Configure a variável de ambiente:
+   ```bash
+   # Crie um arquivo .env
+   VITE_API_BASE_URL=http://localhost:10000/api
+   ```
+
+4. Execute o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
 
 ## 🚀 Deploy
 
-### Backend (Render/Heroku)
-1. Configure as variáveis de ambiente no serviço de deploy
-2. Faça upload do arquivo de credenciais do Firebase
-3. Use `gunicorn main:app` como comando de inicialização
+### Backend no Render
 
-### Frontend (Vercel/Netlify)
-1. Configure a variável `VITE_API_BASE_URL` para a URL da API em produção
-2. Execute `npm run build` para gerar os arquivos estáticos
-3. Faça deploy da pasta `dist/`
+1. **Conecte seu repositório** ao Render
+2. **Configure as variáveis de ambiente**:
+   - `GOOGLE_APPLICATION_CREDENTIALS`: JSON das credenciais Firebase
+   - `SECRET_KEY`: Chave secreta para Flask
+   - `JWT_SECRET_KEY`: Chave secreta para JWT
+3. **Deploy automático** será feito seguindo o `render.yaml`
+
+### Frontend no Vercel
+
+1. **Conecte seu repositório** ao Vercel
+2. **Configure as variáveis de ambiente**:
+   - `VITE_API_BASE_URL`: URL do seu backend no Render
+3. **Deploy automático** será feito seguindo o `vercel.json`
+
+## 🔐 Credenciais Padrão
+
+**Administrador:**
+- Email: `admin@beepy.com`
+- Senha: `admin123`
+
+> ⚠️ **Importante**: Altere essas credenciais após o primeiro acesso!
+
+## 📋 Configuração do Firebase
+
+### 1. Criar Projeto Firebase
+1. Acesse [Firebase Console](https://console.firebase.google.com/)
+2. Crie um novo projeto
+3. Ative o Firestore Database
+
+### 2. Configurar Autenticação de Serviço
+1. Vá em "Configurações do Projeto" > "Contas de Serviço"
+2. Clique em "Gerar nova chave privada"
+3. Baixe o arquivo JSON
+4. Renomeie para `projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json`
+
+### 3. Configurar Firestore
+1. Crie as seguintes coleções:
+   - `users` (usuários)
+   - `indications` (indicações)
+   - `commissions` (comissões)
+
+## 🔧 Variáveis de Ambiente
+
+### Backend (.env ou Render)
+```env
+SECRET_KEY=sua-chave-secreta-flask
+JWT_SECRET_KEY=sua-chave-secreta-jwt
+GOOGLE_APPLICATION_CREDENTIALS={"type":"service_account"...}
+PORT=10000
+```
+
+### Frontend (.env ou Vercel)
+```env
+VITE_API_BASE_URL=https://seu-backend.onrender.com/api
+```
 
 ## 🐛 Solução de Problemas
 
-### Erro de Serialização JSON
-- ✅ **Corrigido:** Implementado encoder JSON customizado para lidar com tipos datetime e Firestore
+### Erro de CORS
+- Verifique se o backend está configurado para aceitar requisições do frontend
+- Confirme as URLs nos arquivos de configuração
 
-### Problemas de Login
-- ✅ **Corrigido:** Melhorado tratamento de erros e interceptors do Axios
-- Verifique se o backend está rodando na porta correta (10000)
-- Verifique se as credenciais do Firebase estão corretas
+### Erro de Firebase
+- Verifique se as credenciais estão corretas
+- Confirme se o Firestore está ativo no projeto
 
-### CORS
-- ✅ **Corrigido:** CORS configurado para aceitar requisições do frontend
+### Erro de Login
+- Execute o endpoint `/api/setup` para criar o usuário admin
+- Verifique se o Firebase está conectado
 
-## 📝 Changelog
+## 📞 Suporte
 
-### v2.0 (Atual)
-- ✅ Corrigido problema de serialização JSON com datetime
-- ✅ Melhorado sistema de autenticação
-- ✅ Adicionado tratamento robusto de erros
-- ✅ Corrigida configuração de CORS
-- ✅ Melhorada interface de login
-- ✅ Adicionados interceptors para requisições HTTP
+Para suporte técnico ou dúvidas sobre o sistema, entre em contato através dos canais oficiais.
 
 ## 📄 Licença
 
-Este projeto é propriedade privada. Todos os direitos reservados.
+Este projeto é propriedade da equipe Beepy. Todos os direitos reservados.
 
-## 🤝 Suporte
+---
 
-Para suporte técnico, entre em contato através dos canais oficiais do projeto.
+**Versão:** 3.0  
+**Última atualização:** Julho 2025
 
