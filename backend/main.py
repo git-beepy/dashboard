@@ -16,24 +16,38 @@ JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "jwt-secret-key-change-in-prod
 try:
     # Tentar usar credenciais do ambiente primeiro
     if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        # Se for string JSON, converter para dict
+        # Se for string JSON, criar arquivo temporário
         creds = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
         if isinstance(creds, str) and creds.startswith("{"):
             import tempfile
-
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                f.write(creds)
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
-
+            import json as json_module
+            
+            # Validar se é JSON válido
+            try:
+                json_module.loads(creds)
+                # Criar arquivo temporário
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    f.write(creds)
+                    temp_file = f.name
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file
+                print("Credenciais Firebase configuradas via variável de ambiente")
+            except json_module.JSONDecodeError:
+                print("Erro: GOOGLE_APPLICATION_CREDENTIALS não é um JSON válido")
+    
     db = firestore.Client()
     print("Firebase conectado com sucesso!")
 except Exception as e:
     print(f"Erro ao conectar Firebase: {e}")
-    # Tentar usar arquivo local
+    # Tentar usar arquivo local como fallback
     try:
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json"
-        db = firestore.Client()
-        print("Firebase conectado com arquivo local!")
+        local_creds_path = "projeto-beepy-firebase-adminsdk-fbsvc-45c41daaaf.json"
+        if os.path.exists(local_creds_path):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = local_creds_path
+            db = firestore.Client()
+            print("Firebase conectado com arquivo local!")
+        else:
+            print("Arquivo de credenciais local não encontrado")
+            db = None
     except Exception as e2:
         print(f"Erro ao conectar Firebase com arquivo local: {e2}")
         db = None
