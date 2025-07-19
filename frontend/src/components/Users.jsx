@@ -120,6 +120,30 @@ const Users = () => {
     }
   };
 
+  const handleToggleStatus = async (userId, currentStatus) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ active: !currentStatus })
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        alert('Status do usuário atualizado com sucesso!');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Erro ao atualizar status do usuário');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status do usuário:', error);
+      alert('Erro ao atualizar status do usuário');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -222,10 +246,12 @@ const Users = () => {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b">
+                  <th className="text-left p-2">ID</th>
                   <th className="text-left p-2">Nome</th>
                   <th className="text-left p-2">Email</th>
                   <th className="text-left p-2">Função</th>
                   <th className="text-left p-2">Telefone</th>
+                  <th className="text-left p-2">Status</th>
                   <th className="text-left p-2">Criado em</th>
                   <th className="text-left p-2">Ações</th>
                 </tr>
@@ -233,6 +259,7 @@ const Users = () => {
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id} className="border-b hover:bg-gray-50">
+                    <td className="p-2 font-mono text-sm">{user.id}</td>
                     <td className="p-2 font-medium">{user.name}</td>
                     <td className="p-2">{user.email}</td>
                     <td className="p-2">
@@ -240,9 +267,21 @@ const Users = () => {
                         {user.role === 'admin' ? 'Administrador' : 'Embaixadora'}
                       </Badge>
                     </td>
-                    <td className="p-2">{user.phone || '-'}
-</td>                    <td className="p-2">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-'}
-</td>                    <td className="p-2">
+                    <td className="p-2">{user.phone || '-'}</td>
+                    <td className="p-2">
+                      <button
+                        onClick={() => handleToggleStatus(user.id, user.active)}
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          user.active !== false 
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                            : 'bg-red-100 text-red-800 hover:bg-red-200'
+                        }`}
+                      >
+                        {user.active !== false ? 'Ativo' : 'Inativo'}
+                      </button>
+                    </td>
+                    <td className="p-2">{user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-'}</td>
+                    <td className="p-2">
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEdit(user)}>
                           <Edit className="w-4 h-4" />

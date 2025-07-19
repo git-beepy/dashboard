@@ -14,7 +14,8 @@ const Indications = () => {
     clientEmail: '',
     clientPhone: '',
     origin: 'website',
-    segment: 'geral'
+    segment: 'saude',
+    customSegment: ''
   });
 
   useEffect(() => {
@@ -36,10 +37,20 @@ const Indications = () => {
     e.preventDefault();
     
     try {
+      const submitData = { ...formData };
+      
+      // Se o segmento for "outro" e há um segmento customizado, usar o customizado
+      if (formData.segment === 'outro' && formData.customSegment.trim()) {
+        submitData.segment = formData.customSegment.trim();
+      }
+      
+      // Remover o campo customSegment antes de enviar
+      delete submitData.customSegment;
+      
       if (editingIndication) {
-        await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, formData);
+        await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, submitData);
       } else {
-        await axios.post(`${API_BASE_URL}/indications`, formData);
+        await axios.post(`${API_BASE_URL}/indications`, submitData);
       }
       
       fetchIndications();
@@ -50,7 +61,8 @@ const Indications = () => {
         clientEmail: '',
         clientPhone: '',
         origin: 'website',
-        segment: 'geral'
+        segment: 'saude',
+        customSegment: ''
       });
     } catch (error) {
       console.error('Erro ao salvar indicação:', error);
@@ -59,12 +71,24 @@ const Indications = () => {
 
   const handleEdit = (indication) => {
     setEditingIndication(indication);
+    
+    // Verificar se o segmento é um dos padrões ou customizado
+    const standardSegments = [
+      'saude', 'educacao_pesquisa', 'juridico', 'administracao_negocios', 'engenharias',
+      'tecnologia_informacao', 'financeiro_bancario', 'marketing_vendas_comunicacao',
+      'industria_producao', 'construcao_civil', 'transportes_logistica', 'comercio_varejo',
+      'turismo_hotelaria_eventos', 'gastronomia_alimentacao', 'agronegocio_meio_ambiente',
+      'artes_cultura_design', 'midias_digitais_criativas', 'seguranca_defesa', 'servicos_gerais'
+    ];
+    const isStandardSegment = standardSegments.includes(indication.segment);
+    
     setFormData({
       clientName: indication.clientName,
       clientEmail: indication.clientEmail,
       clientPhone: indication.clientPhone,
       origin: indication.origin,
-      segment: indication.segment
+      segment: isStandardSegment ? indication.segment : 'outro',
+      customSegment: isStandardSegment ? '' : indication.segment
     });
     setShowModal(true);
   };
@@ -99,7 +123,8 @@ const Indications = () => {
       clientEmail: '',
       clientPhone: '',
       origin: 'website',
-      segment: 'geral'
+      segment: 'saude',
+      customSegment: ''
     });
   };
 
@@ -287,15 +312,47 @@ const Indications = () => {
                 </label>
                 <select
                   value={formData.segment}
-                  onChange={(e) => setFormData({...formData, segment: e.target.value})}
+                  onChange={(e) => setFormData({...formData, segment: e.target.value, customSegment: ''})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="geral">Geral</option>
-                  <option value="premium">Premium</option>
-                  <option value="corporativo">Corporativo</option>
-                  <option value="startup">Startup</option>
+                  <option value="saude">🏥 Saúde</option>
+                  <option value="educacao_pesquisa">🧠 Educação e Pesquisa</option>
+                  <option value="juridico">🏛️ Jurídico</option>
+                  <option value="administracao_negocios">💼 Administração e Negócios</option>
+                  <option value="engenharias">🏢 Engenharias</option>
+                  <option value="tecnologia_informacao">💻 Tecnologia da Informação</option>
+                  <option value="financeiro_bancario">🏦 Financeiro e Bancário</option>
+                  <option value="marketing_vendas_comunicacao">📣 Marketing, Vendas e Comunicação</option>
+                  <option value="industria_producao">🏭 Indústria e Produção</option>
+                  <option value="construcao_civil">🧱 Construção Civil</option>
+                  <option value="transportes_logistica">🚛 Transportes e Logística</option>
+                  <option value="comercio_varejo">🛒 Comércio e Varejo</option>
+                  <option value="turismo_hotelaria_eventos">🏨 Turismo, Hotelaria e Eventos</option>
+                  <option value="gastronomia_alimentacao">🍳 Gastronomia e Alimentação</option>
+                  <option value="agronegocio_meio_ambiente">🌱 Agronegócio e Meio Ambiente</option>
+                  <option value="artes_cultura_design">🎭 Artes, Cultura e Design</option>
+                  <option value="midias_digitais_criativas">📱 Mídias Digitais e Criativas</option>
+                  <option value="seguranca_defesa">👮 Segurança e Defesa</option>
+                  <option value="servicos_gerais">🧹 Serviços Gerais</option>
+                  <option value="outro">Outro (especificar)</option>
                 </select>
               </div>
+
+              {formData.segment === 'outro' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Especificar Segmento
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.customSegment}
+                    onChange={(e) => setFormData({...formData, customSegment: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Digite o segmento específico"
+                  />
+                </div>
+              )}
             </form>
 
             {/* Footer */}

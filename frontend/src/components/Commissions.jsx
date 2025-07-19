@@ -91,12 +91,16 @@ const Commissions = () => {
   const toggleStatus = async (commission) => {
     try {
       const newStatus = commission.status === 'paid' ? 'pending' : 'paid';
-      await axios.put(`${API_BASE_URL}/commissions/${commission.id}`, {
+      const response = await axios.put(`${API_BASE_URL}/commissions/${commission.id}`, {
         status: newStatus
       });
-      fetchCommissions();
+      
+      if (response.status === 200) {
+        fetchCommissions();
+      }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+      alert('Erro ao atualizar status da comissão');
     }
   };
 

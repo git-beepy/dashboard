@@ -439,6 +439,7 @@ def create_user():
             "name": name,
             "role": role,
             "phone": data.get("phone", ""),
+            "active": True,
             "createdAt": datetime.now(),
             "lastActiveAt": datetime.now()
         }
@@ -833,11 +834,102 @@ def health():
     })
 
 
+@app.route("/commissions/<commission_id>", methods=["PUT", "OPTIONS"])
+@jwt_required()
+def update_commission(commission_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        data = request.get_json()
+        update_data = {"updatedAt": datetime.now()}
+
+        for field in ["status", "value", "ambassadorId", "indicationId"]:
+            if field in data:
+                update_data[field] = data[field]
+
+        db.collection("commissions").document(commission_id).update(update_data)
+        return safe_jsonify({"message": "Comissão atualizada com sucesso"}, 200)
+
+    except Exception as e:
+        print(f"Erro ao atualizar comissão: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
+
+
+@app.route("/commissions/<commission_id>", methods=["DELETE", "OPTIONS"])
+@jwt_required()
+def delete_commission(commission_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        db.collection("commissions").document(commission_id).delete()
+        return safe_jsonify({"message": "Comissão excluída com sucesso"}, 200)
+    except Exception as e:
+        print(f"Erro ao excluir comissão: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
+
+
 # Para desenvolvimento local
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
 
+
+
+@app.route("/users/<user_id>", methods=["PUT", "OPTIONS"])
+@jwt_required()
+def update_user(user_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        current_user_id = get_jwt_identity()
+        user_doc = db.collection("users").document(current_user_id).get()
+
+        if not user_doc.exists:
+            return safe_jsonify({"error": "Usuário não encontrado"}, 404)
+
+        user_data = user_doc.to_dict()
+        if user_data["role"] != "admin":
+            return safe_jsonify({"error": "Acesso negado"}, 403)
+
+        # Verificar se o usuário a ser atualizado existe
+        target_user_doc = db.collection("users").document(user_id).get()
+        if not target_user_doc.exists:
+            return safe_jsonify({"error": "Usuário a ser atualizado não encontrado"}, 404)
+
+        data = request.get_json()
+        if not data:
+            return safe_jsonify({"error": "Dados não fornecidos"}, 400)
+
+        update_data = {"updatedAt": datetime.now()}
+
+        # Campos que podem ser atualizados
+        for field in ["name", "email", "role", "phone", "active"]:
+            if field in data:
+                update_data[field] = data[field]
+
+        # Se uma nova senha foi fornecida, fazer hash
+        if "password" in data and data["password"]:
+            hashed_password = bcrypt.hashpw(data["password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            update_data["password"] = hashed_password
+
+        db.collection("users").document(user_id).update(update_data)
+        return safe_jsonify({"message": "Usuário atualizado com sucesso"}, 200)
+
+    except Exception as e:
+        print(f"Erro ao atualizar usuário: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
 
 
 @app.route("/users/<user_id>", methods=["DELETE", "OPTIONS"])
