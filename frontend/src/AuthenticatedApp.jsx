@@ -270,6 +270,60 @@ const AuthenticatedApp = () => {
     setUserType(user.user_type);
   };
 
+  const handleUpdateIndicationStatus = async (indicationId, newStatus) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/indications/${indicationId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        // Atualizar o estado local das indicações (simulado)
+        const updatedIndications = indications.map(ind =>
+          ind.id === indicationId ? { ...ind, status: newStatus } : ind
+        );
+        // Note: 'indications' é um array mockado, em um app real você atualizaria o estado com setIndications
+        console.log('Indicação atualizada:', updatedIndications);
+        alert('Status da indicação atualizado com sucesso!');
+      } else {
+        alert(data.message || 'Erro ao atualizar status da indicação.');
+      }
+    } catch (error) {
+      console.error('Erro de rede ou servidor:', error);
+      alert('Erro de conexão. Tente novamente mais tarde.');
+    }
+  };
+
+  const handleUpdateUserStatus = async (userId, newStatus) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        const updatedUsers = users.map(user =>
+          user.id === userId ? { ...user, status: newStatus } : user
+        );
+        setUsers(updatedUsers);
+        alert('Status do usuário atualizado com sucesso!');
+      } else {
+        alert(data.message || 'Erro ao atualizar status do usuário.');
+      }
+    } catch (error) {
+      console.error('Erro de rede ou servidor:', error);
+      alert('Erro de conexão. Tente novamente mais tarde.');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'aprovado':
@@ -820,6 +874,17 @@ const AuthenticatedApp = () => {
                       {user.user_type}
                     </Badge>
                     {user.user_type !== 'admin' && (
+                      <Select value={user.status} onValueChange={(value) => handleUpdateUserStatus(user.id, value)}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ativo">Ativo</SelectItem>
+                          <SelectItem value="inativo">Inativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {user.user_type !== 'admin' && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -941,7 +1006,7 @@ const AuthenticatedApp = () => {
                     <Badge className={getStatusColor(indication.status)}>
                       {indication.status}
                     </Badge>
-                    <Select value={indication.status}>
+                    <Select value={indication.status} onValueChange={(value) => handleUpdateIndicationStatus(indication.id, value)}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>

@@ -115,6 +115,18 @@ const Indications = () => {
     }
   };
 
+  const updateIndicationStatus = async (indicationId, newStatus) => {
+    try {
+      await axios.put(`${API_BASE_URL}/indications/${indicationId}/status`, {
+        status: newStatus
+      });
+      fetchIndications();
+    } catch (error) {
+      console.error('Erro ao atualizar status da indicação:', error);
+      alert('Erro ao atualizar status da indicação');
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingIndication(null);
@@ -199,16 +211,27 @@ const Indications = () => {
                   {indication.segment}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => toggleConversion(indication)}
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      indication.converted
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {indication.converted ? 'Convertida' : 'Pendente'}
-                  </button>              </td>
+                  {user.role === 'admin' ? (
+                    <select
+                      value={indication.status || 'pendente'}
+                      onChange={(e) => updateIndicationStatus(indication.id, e.target.value)}
+                      className="px-2 py-1 text-xs font-semibold rounded-full border-0 bg-gray-100 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="agendado">Agendado</option>
+                      <option value="aprovado">Aprovado</option>
+                      <option value="não aprovado">Não Aprovado</option>
+                    </select>
+                  ) : (
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      indication.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                      indication.status === 'não aprovado' ? 'bg-red-100 text-red-800' :
+                      indication.status === 'agendado' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {indication.status || 'Pendente'}
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
                     <button

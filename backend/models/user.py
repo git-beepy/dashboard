@@ -17,6 +17,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=True)  # Hash da senha
     user_type = db.Column(db.String(20), nullable=False)  # 'embaixadora' ou 'admin'
+    status = db.Column(db.String(20), default='ativo') # 'ativo' ou 'inativo'
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relacionamentos
@@ -40,6 +41,7 @@ class User(db.Model):
             'name': self.name,
             'email': self.email,
             'user_type': self.user_type,
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from routes.users_firestore import users_bp
 from google.cloud import firestore
 from utils import serialize_firestore_data, safe_jsonify
 
@@ -64,6 +65,9 @@ jwt = JWTManager(app)
 
 # Configurar CORS para lidar com credenciais
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
+# Registrar blueprints
+app.register_blueprint(users_bp, url_prefix='/users')
 
 # Rotas de autenticação
 @app.route("/auth/login", methods=["POST", "OPTIONS"])
@@ -322,6 +326,30 @@ def update_indication(indication_id):
         print(f"Erro ao atualizar indicação: {str(e)}")
         return safe_jsonify({"error": str(e)}, 500)
 
+@app.route("/indications/<indication_id>/status", methods=["PUT", "OPTIONS"])
+@jwt_required()
+def update_indication_status(indication_id):
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        data = request.get_json()
+        new_status = data.get("status")
+
+        if new_status not in ["agendado", "aprovado", "não aprovado"]:
+            return safe_jsonify({"error": "Status inválido. Use 'agendado', 'aprovado' ou 'não aprovado'"}, 400)
+
+        update_data = {"status": new_status, "updatedAt": datetime.now()}
+        db.collection("indications").document(indication_id).update(update_data)
+
+        return safe_jsonify({"message": "Status da indicação atualizado com sucesso"}, 200)
+
+    except Exception as e:
+        print(f"Erro ao atualizar status da indicação: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
 
 @app.route("/indications/<indication_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
