@@ -164,58 +164,154 @@ const Indications = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cliente
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contato
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Origem
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Segmento
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {indications.map((indication) => (
-              <tr key={indication.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {indication.clientName}
+      {/* Tabela para desktop */}
+      <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cliente
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contato
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Origem
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Segmento
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {indications.map((indication) => (
+                <tr key={indication.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {indication.clientName}
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{indication.clientEmail}</div>
-                  <div className="text-sm text-gray-500">{indication.clientPhone}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{indication.clientEmail}</div>
+                    <div className="text-sm text-gray-500">{indication.clientPhone}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {indication.origin}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {indication.segment}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {user.role === 'admin' ? (
+                      <select
+                        value={indication.status || 'pendente'}
+                        onChange={(e) => updateIndicationStatus(indication.id, e.target.value)}
+                        className="px-2 py-1 text-xs font-semibold rounded-full border-0 bg-gray-100 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="agendado">Agendado</option>
+                        <option value="aprovado">Aprovado</option>
+                        <option value="não aprovado">Não Aprovado</option>
+                      </select>
+                    ) : (
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        indication.status === 'aprovado' ? 'bg-green-100 text-green-800' :
+                        indication.status === 'não aprovado' ? 'bg-red-100 text-red-800' :
+                        indication.status === 'agendado' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {indication.status || 'Pendente'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(indication)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      {user.role === 'admin' && (
+                        <button
+                          onClick={() => handleDelete(indication.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Cards para mobile */}
+      <div className="lg:hidden space-y-4">
+        {indications.map((indication) => (
+          <div key={indication.id} className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {indication.clientName}
+                </h3>
+                <p className="text-sm text-gray-600">{indication.clientEmail}</p>
+                <p className="text-xs text-gray-500">{indication.clientPhone}</p>
+              </div>
+              <div className="flex space-x-2 ml-4">
+                <button
+                  onClick={() => handleEdit(indication)}
+                  className="text-blue-600 hover:text-blue-900 p-1"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                {user.role === 'admin' && (
+                  <button
+                    onClick={() => handleDelete(indication.id)}
+                    className="text-red-600 hover:text-red-900 p-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-gray-500">Origem:</span>
+                <div className="mt-1">
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                     {indication.origin}
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {indication.segment}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </div>
+              </div>
+              
+              <div>
+                <span className="text-gray-500">Segmento:</span>
+                <p className="text-gray-900 mt-1">{indication.segment}</p>
+              </div>
+              
+              <div className="col-span-2">
+                <span className="text-gray-500">Status:</span>
+                <div className="mt-1">
                   {user.role === 'admin' ? (
                     <select
                       value={indication.status || 'pendente'}
                       onChange={(e) => updateIndicationStatus(indication.id, e.target.value)}
-                      className="px-2 py-1 text-xs font-semibold rounded-full border-0 bg-gray-100 focus:ring-2 focus:ring-blue-500"
+                      className="px-2 py-1 text-xs font-semibold rounded-full border-0 bg-gray-100 focus:ring-2 focus:ring-blue-500 w-full"
                     >
                       <option value="agendado">Agendado</option>
                       <option value="aprovado">Aprovado</option>
@@ -231,29 +327,11 @@ const Indications = () => {
                       {indication.status || 'Pendente'}
                     </span>
                   )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(indication)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    {user.role === 'admin' && (
-                      <button
-                        onClick={() => handleDelete(indication.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Modal */}

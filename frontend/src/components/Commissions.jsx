@@ -203,52 +203,137 @@ const Commissions = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Embaixadora
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Indicação
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Valor
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {commissions.map((commission) => {
-              const indication = indications.find(ind => ind.id === commission.indicationId);
+      {/* Tabela para desktop */}
+      <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Embaixadora
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Indicação
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {commissions.map((commission) => {
+                const indication = indications.find(ind => ind.id === commission.indicationId);
 
-              return (
-                <tr key={commission.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {commission.ambassadorId}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {indication?.clientName || 'N/A'}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {indication?.clientEmail || ''}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      R$ {(commission.value || 0).toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                return (
+                  <tr key={commission.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {commission.ambassadorId}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {indication?.clientName || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {indication?.clientEmail || ''}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        R$ {(commission.value || 0).toLocaleString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => user.role === 'admin' && toggleStatus(commission)}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(commission.status)} ${
+                          user.role === 'admin' ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+                        }`}
+                      >
+                        {getStatusText(commission.status)}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {user.role === 'admin' && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(commission)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(commission.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Cards para mobile */}
+      <div className="lg:hidden space-y-4">
+        {commissions.map((commission) => {
+          const indication = indications.find(ind => ind.id === commission.indicationId);
+
+          return (
+            <div key={commission.id} className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Embaixadora: {commission.ambassadorId}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {indication?.clientName || 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {indication?.clientEmail || ''}
+                  </p>
+                </div>
+                {user.role === 'admin' && (
+                  <div className="flex space-x-2 ml-4">
+                    <button
+                      onClick={() => handleEdit(commission)}
+                      className="text-blue-600 hover:text-blue-900 p-1"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(commission.id)}
+                      className="text-red-600 hover:text-red-900 p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500">Valor:</span>
+                  <p className="text-lg font-medium text-gray-900 mt-1">
+                    R$ {(commission.value || 0).toLocaleString()}
+                  </p>
+                </div>
+                
+                <div>
+                  <span className="text-gray-500">Status:</span>
+                  <div className="mt-1">
                     <button
                       onClick={() => user.role === 'admin' && toggleStatus(commission)}
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(commission.status)} ${
@@ -257,30 +342,12 @@ const Commissions = () => {
                     >
                       {getStatusText(commission.status)}
                     </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {user.role === 'admin' && (
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(commission)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(commission.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Modal */}

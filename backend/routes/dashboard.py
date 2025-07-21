@@ -97,69 +97,86 @@ def admin_dashboard():
         total_sales = Indication.query.filter_by(status='aprovado').count()
         total_ambassadors = User.query.filter_by(user_type='embaixadora').count()
         
-        # Comissões a pagar no mês atual
+        # Embaixadoras ativas (últimos 60 dias)
+        sixty_days_ago = datetime.now() - timedelta(days=60)
+        active_ambassadors = db.session.query(User.id).join(Indication, User.id == Indication.ambassador_id)\
+            .filter(Indication.created_at >= sixty_days_ago)\
+            .filter(User.user_type == 'embaixadora')\
+            .distinct().count()
+        
+        # Comissões do mês atual (todas, não apenas pendentes)
         current_month = datetime.now().month
         current_year = datetime.now().year
         
         current_month_commissions = Commission.query.filter(
             extract('month', Commission.due_date) == current_month,
-            extract('year', Commission.due_date) == current_year,
-            Commission.payment_status == 'pendente'
+            extract('year', Commission.due_date) == current_year
         ).all()
         
-        commissions_to_pay = sum(c.amount for c in current_month_commissions)
+        monthly_commissions = sum(c.amount for c in current_month_commissions)
         
         # Taxa de conversão geral
         conversion_rate = (total_sales / total_indications * 100) if total_indications > 0 else 0
         
-        # Indicações por mês (últimos 12 meses)
+        # Porcentagem de embaixadoras ativas
+        active_percentage = (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
+        
+        # Indicações por mês (últimos 12 meses) - formato para gráfico
         monthly_indications = []
-        for i in range(12):
-            date = datetime.now() - timedelta(days=30 * i)
+        months = ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan']
+        for i, month_name in enumerate(months):
+            date = datetime.now() - timedelta(days=30 * (11 - i))
             month_indications = Indication.query.filter(
                 extract('month', Indication.created_at) == date.month,
                 extract('year', Indication.created_at) == date.year
             ).count()
             
             monthly_indications.append({
-                'month': date.strftime('%Y-%m'),
+                'month': month_name,
                 'count': month_indications
             })
         
-        monthly_indications.reverse()
+        # Leads por origem
+        leads_origin = db.session.query(
+            Indication.origin,
+            func.count(Indication.id).label('count')
+        ).group_by(Indication.origin).all()
+        
+        leads_list = [{'name': origin or 'Não informado', 'value': count} for origin, count in leads_origin]
+        
+        # Conversão por segmento
+        segment_conversion = db.session.query(
+            Indication.segment,
+            func.count(Indication.id).label('total'),
+            func.sum(func.case([(Indication.status == 'aprovado', 1)], else_=0)).label('converted')
+        ).group_by(Indication.segment).all()
+        
+        segment_list = []
+        for segment, total, converted in segment_conversion:
+            rate = (converted / total * 100) if total > 0 else 0
+            segment_list.append({
+                'segment': segment or 'Não informado',
+                'total': total,
+                'converted': converted or 0,
+                'rate': round(rate, 1)
+            })
         
         # Vendas por mês (últimos 12 meses)
         monthly_sales = []
-        for i in range(12):
-            date = datetime.now() - timedelta(days=30 * i)
-            month_sales = Indication.query.filter(
+        for i, month_name in enumerate(months):
+            date = datetime.now() - timedelta(days=30 * (11 - i))
+            month_sales_count = Indication.query.filter(
                 Indication.status == 'aprovado',
-                extract('month', Indication.sale_approval_date) == date.month,
-                extract('year', Indication.sale_approval_date) == date.year
+                extract('month', Indication.created_at) == date.month,
+                extract('year', Indication.created_at) == date.year
             ).count()
             
+            # Simular valor de vendas (R$ 1000 por venda aprovada)
+            month_sales_value = month_sales_count * 1000
+            
             monthly_sales.append({
-                'month': date.strftime('%Y-%m'),
-                'count': month_sales
-            })
-        
-        monthly_sales.reverse()
-        
-        # Conversão por segmento
-        niche_conversion = db.session.query(
-            Indication.niche,
-            func.count(Indication.id).label('total'),
-            func.sum(func.case([(Indication.status == 'aprovado', 1)], else_=0)).label('approved')
-        ).group_by(Indication.niche).all()
-        
-        niche_list = []
-        for niche, total, approved in niche_conversion:
-            conversion = (approved / total * 100) if total > 0 else 0
-            niche_list.append({
-                'niche': niche,
-                'total': total,
-                'approved': approved or 0,
-                'conversion_rate': round(conversion, 1)
+                'month': month_name,
+                'value': month_sales_value
             })
         
         # Top embaixadoras por volume de indicações
@@ -169,27 +186,26 @@ def admin_dashboard():
         ).join(Indication, User.id == Indication.ambassador_id)\
          .group_by(User.id, User.name)\
          .order_by(func.count(Indication.id).desc())\
-         .limit(5).all()
+         .limit(10).all()
         
         top_ambassadors_list = [
-            {'name': name, 'total_indications': total}
+            {'name': name, 'indications': total}
             for name, total in top_ambassadors
         ]
         
         return jsonify({
-            'success': True,
-            'dashboard': {
-                'stats': {
-                    'total_indications': total_indications,
-                    'total_sales': total_sales,
-                    'total_ambassadors': total_ambassadors,
-                    'commissions_to_pay': commissions_to_pay,
-                    'conversion_rate': round(conversion_rate, 1)
-                },
-                'monthly_indications': monthly_indications,
-                'monthly_sales': monthly_sales,
-                'niche_conversion': niche_list,
-                'top_ambassadors': top_ambassadors_list
+            'stats': {
+                'totalIndications': total_indications,
+                'monthlyCommissions': monthly_commissions,
+                'activePercentage': round(active_percentage, 1),
+                'activeAmbassadors': active_ambassadors
+            },
+            'charts': {
+                'indicationsMonthly': monthly_indications,
+                'leadsOrigin': leads_list,
+                'conversionBySegment': segment_list,
+                'salesMonthly': monthly_sales,
+                'topAmbassadors': top_ambassadors_list
             }
         }), 200
         
