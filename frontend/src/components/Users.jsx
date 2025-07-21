@@ -5,7 +5,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Users = () => {
   const { API_BASE_URL } = useAuth();
@@ -14,6 +15,7 @@ const Users = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -181,6 +183,78 @@ const Users = () => {
     setShowPassword(false);
   };
 
+  // Função para gerar dados dos gráficos
+  const generateChartsData = () => {
+    // Dados por função
+    const roleData = {};
+    users.forEach(user => {
+      const role = user.role === 'admin' ? 'Administrador' : 'Embaixadora';
+      roleData[role] = (roleData[role] || 0) + 1;
+    });
+
+    const roleChartData = Object.entries(roleData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Dados por status
+    const statusData = {};
+    users.forEach(user => {
+      const status = user.active !== false ? 'Ativo' : 'Inativo';
+      statusData[status] = (statusData[status] || 0) + 1;
+    });
+
+    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Dados por mês de criação (últimos 6 meses)
+    const monthlyData = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      monthlyData[monthKey] = 0;
+    }
+
+    users.forEach(user => {
+      if (user.createdAt) {
+        const date = new Date(user.createdAt);
+        const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        if (monthlyData.hasOwnProperty(monthKey)) {
+          monthlyData[monthKey]++;
+        }
+      }
+    });
+
+    const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
+      month,
+      count
+    }));
+
+    // Distribuição por domínio de email
+    const domainData = {};
+    users.forEach(user => {
+      if (user.email) {
+        const domain = user.email.split('@')[1] || 'Desconhecido';
+        domainData[domain] = (domainData[domain] || 0) + 1;
+      }
+    });
+
+    const domainChartData = Object.entries(domainData)
+      .map(([domain, count]) => ({ domain, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 domínios
+
+    return {
+      roleChartData,
+      statusChartData,
+      monthlyChartData,
+      domainChartData
+    };
+  };
+
   const getRoleBadgeColor = (role) => {
     return role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
   };
@@ -204,13 +278,22 @@ const Users = () => {
     <div className="p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Usuários</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Novo Usuário</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowCharts(!showCharts)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}</span>
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Novo Usuário</span>
+          </button>
+        </div>
       </div>
 
       {/* Cards de resumo */}
@@ -257,6 +340,87 @@ const Users = () => {
           </div>
         </div>
       </div>
+
+      {/* Seção de Gráficos */}
+      {showCharts && (
+        <div className="mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico por Função */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Usuários por Função</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={generateChartsData().roleChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {generateChartsData().roleChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#EF4444', '#3B82F6'][index % 2]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico por Status */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Usuários por Status</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={generateChartsData().statusChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {generateChartsData().statusChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#10B981', '#EF4444'][index % 2]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico Mensal */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Usuários Criados por Mês</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico por Domínio de Email */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Domínios de Email</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().domainChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="domain" angle={-45} textAnchor="end" height={100} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#F59E0B" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 mb-6">

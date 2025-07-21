@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import { Plus, Edit, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const Commissions = () => {
   const { user, API_BASE_URL } = useAuth();
@@ -10,6 +11,7 @@ const Commissions = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCommission, setEditingCommission] = useState(null);
+  const [showCharts, setShowCharts] = useState(false);
   const [formData, setFormData] = useState({
     ambassadorId: '',
     indicationId: '',
@@ -104,6 +106,97 @@ const Commissions = () => {
     }
   };
 
+  // Função para gerar dados dos gráficos
+  const generateChartsData = () => {
+    // Dados por status
+    const statusData = {};
+    commissions.forEach(commission => {
+      const status = commission.status || 'pending';
+      statusData[status] = (statusData[status] || 0) + 1;
+    });
+
+    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+      name: getStatusText(name),
+      value
+    }));
+
+    // Dados por embaixadora (top 10)
+    const ambassadorData = {};
+    commissions.forEach(commission => {
+      const ambassadorId = commission.ambassadorId || 'Não informado';
+      if (!ambassadorData[ambassadorId]) {
+        ambassadorData[ambassadorId] = { count: 0, total: 0 };
+      }
+      ambassadorData[ambassadorId].count++;
+      ambassadorData[ambassadorId].total += commission.value || 0;
+    });
+
+    const ambassadorChartData = Object.entries(ambassadorData)
+      .map(([ambassadorId, data]) => ({
+        ambassador: ambassadorId,
+        count: data.count,
+        total: data.total
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
+    // Dados mensais (últimos 6 meses)
+    const monthlyData = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      monthlyData[monthKey] = { count: 0, total: 0 };
+    }
+
+    commissions.forEach(commission => {
+      if (commission.createdAt) {
+        const date = new Date(commission.createdAt);
+        const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        if (monthlyData.hasOwnProperty(monthKey)) {
+          monthlyData[monthKey].count++;
+          monthlyData[monthKey].total += commission.value || 0;
+        }
+      }
+    });
+
+    const monthlyChartData = Object.entries(monthlyData).map(([month, data]) => ({
+      month,
+      count: data.count,
+      total: data.total
+    }));
+
+    // Distribuição de valores
+    const valueRanges = {
+      '0-100': 0,
+      '101-500': 0,
+      '501-1000': 0,
+      '1001-2000': 0,
+      '2000+': 0
+    };
+
+    commissions.forEach(commission => {
+      const value = commission.value || 0;
+      if (value <= 100) valueRanges['0-100']++;
+      else if (value <= 500) valueRanges['101-500']++;
+      else if (value <= 1000) valueRanges['501-1000']++;
+      else if (value <= 2000) valueRanges['1001-2000']++;
+      else valueRanges['2000+']++;
+    });
+
+    const valueRangeChartData = Object.entries(valueRanges).map(([range, count]) => ({
+      range,
+      count
+    }));
+
+    return {
+      statusChartData,
+      ambassadorChartData,
+      monthlyChartData,
+      valueRangeChartData
+    };
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid':
@@ -153,15 +246,24 @@ const Commissions = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Comissões</h1>
-        {user.role === 'admin' && (
+        <div className="flex space-x-3">
           <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+            onClick={() => setShowCharts(!showCharts)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
           >
-            <Plus className="h-4 w-4" />
-            <span>Nova Comissão</span>
+            <BarChart3 className="h-4 w-4" />
+            <span>{showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}</span>
           </button>
-        )}
+          {user.role === 'admin' && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nova Comissão</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Cards de resumo */}
@@ -202,6 +304,82 @@ const Commissions = () => {
           </div>
         </div>
       </div>
+
+      {/* Seção de Gráficos */}
+      {showCharts && (
+        <div className="mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico por Status */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Comissões por Status</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={generateChartsData().statusChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {generateChartsData().statusChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#10B981', '#F59E0B', '#EF4444'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico por Embaixadora */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Embaixadoras por Valor</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().ambassadorChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="ambassador" angle={-45} textAnchor="end" height={100} />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`R$ ${value.toLocaleString()}`, 'Total']} />
+                  <Bar dataKey="total" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico Mensal */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Comissões por Mês</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={generateChartsData().monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value, name) => [
+                    name === 'total' ? `R$ ${value.toLocaleString()}` : value,
+                    name === 'total' ? 'Valor Total' : 'Quantidade'
+                  ]} />
+                  <Line type="monotone" dataKey="count" stroke="#8B5CF6" name="count" />
+                  <Line type="monotone" dataKey="total" stroke="#F59E0B" name="total" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Distribuição de Valores */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribuição por Faixa de Valor</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().valueRangeChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="range" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabela para desktop */}
       <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">

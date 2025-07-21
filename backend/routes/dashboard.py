@@ -7,6 +7,32 @@ from sqlalchemy import func, extract
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
+@dashboard_bp.route('/ambassador', methods=['GET'])
+def current_ambassador_dashboard():
+    """
+    Dashboard para a embaixadora logada
+    """
+    from flask_jwt_extended import get_jwt_identity
+    
+    try:
+        # Obter ID do usuário logado
+        current_user_id = get_jwt_identity()
+        if not current_user_id:
+            return jsonify({
+                'success': False,
+                'message': 'Token inválido'
+            }), 401
+        
+        # Redirecionar para o dashboard específico da embaixadora
+        return ambassador_dashboard(current_user_id)
+        
+    except Exception as e:
+        print(f"Erro no dashboard embaixadora atual: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao gerar dashboard: {str(e)}'
+        }), 500
+
 @dashboard_bp.route('/ambassador/<int:ambassador_id>', methods=['GET'])
 def ambassador_dashboard(ambassador_id):
     """
@@ -22,65 +48,70 @@ def ambassador_dashboard(ambassador_id):
             }), 404
         
         # Estatísticas básicas
-        total_indications = Indication.query.filter_by(ambassador_id=ambassador_id).count()
-        approved_sales = Indication.query.filter_by(ambassador_id=ambassador_id, status='aprovado').count()
+        total_indications = Indication.query.filter_by(ambassadorId=ambassador_id).count()
+        approved_sales = Indication.query.filter_by(ambassadorId=ambassador_id, status='aprovado').count()
         
         # Comissões
         current_month = datetime.now().month
         current_year = datetime.now().year
         
         current_month_commissions = Commission.query.filter(
-            Commission.ambassador_id == ambassador_id,
-            extract('month', Commission.due_date) == current_month,
-            extract('year', Commission.due_date) == current_year
+            Commission.ambassadorId == ambassador_id,
+            extract('month', Commission.createdAt) == current_month,
+            extract('year', Commission.createdAt) == current_year
         ).all()
         
-        current_month_commission_amount = sum(c.amount for c in current_month_commissions)
+        current_month_commission_amount = sum(c.value for c in current_month_commissions)
         
         # Taxa de conversão
         conversion_rate = (approved_sales / total_indications * 100) if total_indications > 0 else 0
         
         # Comissões por mês (últimos 12 meses)
         monthly_commissions = []
+        months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        
         for i in range(12):
-            date = datetime.now() - timedelta(days=30 * i)
+            date = datetime.now() - timedelta(days=30 * (11 - i))
             month_commissions = Commission.query.filter(
-                Commission.ambassador_id == ambassador_id,
-                extract('month', Commission.due_date) == date.month,
-                extract('year', Commission.due_date) == date.year
+                Commission.ambassadorId == ambassador_id,
+                extract('month', Commission.createdAt) == date.month,
+                extract('year', Commission.createdAt) == date.year
             ).all()
             
             monthly_commissions.append({
-                'month': date.strftime('%Y-%m'),
-                'total': sum(c.amount for c in month_commissions)
+                'month': months[date.month - 1],
+                'comissao': sum(c.value for c in month_commissions)
             })
         
-        monthly_commissions.reverse()
-        
-        # Indicações por nicho
-        niche_stats = db.session.query(
-            Indication.niche,
+        # Indicações por segmento
+        segment_stats = db.session.query(
+            Indication.segment,
             func.count(Indication.id).label('count')
-        ).filter_by(ambassador_id=ambassador_id).group_by(Indication.niche).all()
+        ).filter_by(ambassadorId=ambassador_id).group_by(Indication.segment).all()
         
-        niche_list = [{'niche': niche, 'count': count} for niche, count in niche_stats]
+        total_segment_indications = sum(count for _, count in segment_stats)
+        segment_list = []
+        colors = ['#EF4444', '#3B82F6', '#8B5CF6', '#F59E0B']
+        
+        for i, (segment, count) in enumerate(segment_stats):
+            percentage = (count / total_segment_indications * 100) if total_segment_indications > 0 else 0
+            segment_list.append({
+                'name': (segment or 'Não informado').upper(),
+                'value': round(percentage, 1),
+                'color': colors[i % len(colors)]
+            })
         
         return jsonify({
-            'success': True,
-            'dashboard': {
-                'ambassador': ambassador.to_dict(),
-                'stats': {
-                    'total_indications': total_indications,
-                    'approved_sales': approved_sales,
-                    'current_month_commission': current_month_commission_amount,
-                    'conversion_rate': round(conversion_rate, 1)
-                },
-                'monthly_commissions': monthly_commissions,
-                'niche_stats': niche_list
-            }
+            'totalIndications': total_indications,
+            'totalSales': approved_sales,
+            'monthlyCommission': current_month_commission_amount,
+            'conversionRate': round(conversion_rate, 1),
+            'commissionsData': monthly_commissions,
+            'segmentData': segment_list
         }), 200
         
     except Exception as e:
+        print(f"Erro no dashboard embaixadora: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Erro ao gerar dashboard: {str(e)}'
@@ -95,25 +126,25 @@ def admin_dashboard():
         # Estatísticas gerais
         total_indications = Indication.query.count()
         total_sales = Indication.query.filter_by(status='aprovado').count()
-        total_ambassadors = User.query.filter_by(user_type='embaixadora').count()
+        total_ambassadors = User.query.filter_by(role='embaixadora').count()
         
         # Embaixadoras ativas (últimos 60 dias)
         sixty_days_ago = datetime.now() - timedelta(days=60)
-        active_ambassadors = db.session.query(User.id).join(Indication, User.id == Indication.ambassador_id)\
-            .filter(Indication.created_at >= sixty_days_ago)\
-            .filter(User.user_type == 'embaixadora')\
+        active_ambassadors = db.session.query(User.id).join(Indication, User.id == Indication.ambassadorId)\
+            .filter(Indication.createdAt >= sixty_days_ago)\
+            .filter(User.role == 'embaixadora')\
             .distinct().count()
         
-        # Comissões do mês atual (todas, não apenas pendentes)
+        # Comissões do mês atual
         current_month = datetime.now().month
         current_year = datetime.now().year
         
         current_month_commissions = Commission.query.filter(
-            extract('month', Commission.due_date) == current_month,
-            extract('year', Commission.due_date) == current_year
+            extract('month', Commission.createdAt) == current_month,
+            extract('year', Commission.createdAt) == current_year
         ).all()
         
-        monthly_commissions = sum(c.amount for c in current_month_commissions)
+        monthly_commissions = sum(c.value for c in current_month_commissions)
         
         # Taxa de conversão geral
         conversion_rate = (total_sales / total_indications * 100) if total_indications > 0 else 0
@@ -121,18 +152,19 @@ def admin_dashboard():
         # Porcentagem de embaixadoras ativas
         active_percentage = (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
         
-        # Indicações por mês (últimos 12 meses) - formato para gráfico
+        # Indicações por mês (últimos 12 meses)
         monthly_indications = []
-        months = ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan']
-        for i, month_name in enumerate(months):
+        months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        
+        for i in range(12):
             date = datetime.now() - timedelta(days=30 * (11 - i))
             month_indications = Indication.query.filter(
-                extract('month', Indication.created_at) == date.month,
-                extract('year', Indication.created_at) == date.year
+                extract('month', Indication.createdAt) == date.month,
+                extract('year', Indication.createdAt) == date.year
             ).count()
             
             monthly_indications.append({
-                'month': month_name,
+                'month': months[date.month - 1],
                 'count': month_indications
             })
         
@@ -163,19 +195,19 @@ def admin_dashboard():
         
         # Vendas por mês (últimos 12 meses)
         monthly_sales = []
-        for i, month_name in enumerate(months):
+        for i in range(12):
             date = datetime.now() - timedelta(days=30 * (11 - i))
             month_sales_count = Indication.query.filter(
                 Indication.status == 'aprovado',
-                extract('month', Indication.created_at) == date.month,
-                extract('year', Indication.created_at) == date.year
+                extract('month', Indication.createdAt) == date.month,
+                extract('year', Indication.createdAt) == date.year
             ).count()
             
             # Simular valor de vendas (R$ 1000 por venda aprovada)
             month_sales_value = month_sales_count * 1000
             
             monthly_sales.append({
-                'month': month_name,
+                'month': months[date.month - 1],
                 'value': month_sales_value
             })
         
@@ -183,7 +215,7 @@ def admin_dashboard():
         top_ambassadors = db.session.query(
             User.name,
             func.count(Indication.id).label('total_indications')
-        ).join(Indication, User.id == Indication.ambassador_id)\
+        ).join(Indication, User.id == Indication.ambassadorId)\
          .group_by(User.id, User.name)\
          .order_by(func.count(Indication.id).desc())\
          .limit(10).all()
@@ -210,6 +242,7 @@ def admin_dashboard():
         }), 200
         
     except Exception as e:
+        print(f"Erro no dashboard admin: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Erro ao gerar dashboard admin: {str(e)}'

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import { Plus, Edit, Trash2, Check, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, X, BarChart3, PieChart } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 const Indications = () => {
   const { user, API_BASE_URL } = useAuth();
@@ -9,6 +10,7 @@ const Indications = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingIndication, setEditingIndication] = useState(null);
+  const [showCharts, setShowCharts] = useState(false);
   const [formData, setFormData] = useState({
     clientName: '',
     clientEmail: '',
@@ -127,6 +129,76 @@ const Indications = () => {
     }
   };
 
+  // Função para gerar dados dos gráficos
+  const generateChartsData = () => {
+    // Dados por origem
+    const originData = {};
+    indications.forEach(indication => {
+      const origin = indication.origin || 'Não informado';
+      originData[origin] = (originData[origin] || 0) + 1;
+    });
+
+    const originChartData = Object.entries(originData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Dados por segmento
+    const segmentData = {};
+    indications.forEach(indication => {
+      const segment = indication.segment || 'Não informado';
+      segmentData[segment] = (segmentData[segment] || 0) + 1;
+    });
+
+    const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Dados por status
+    const statusData = {};
+    indications.forEach(indication => {
+      const status = indication.status || 'Pendente';
+      statusData[status] = (statusData[status] || 0) + 1;
+    });
+
+    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    // Dados por mês (últimos 6 meses)
+    const monthlyData = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      monthlyData[monthKey] = 0;
+    }
+
+    indications.forEach(indication => {
+      if (indication.createdAt) {
+        const date = new Date(indication.createdAt);
+        const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        if (monthlyData.hasOwnProperty(monthKey)) {
+          monthlyData[monthKey]++;
+        }
+      }
+    });
+
+    const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
+      month,
+      count
+    }));
+
+    return {
+      originChartData,
+      segmentChartData,
+      statusChartData,
+      monthlyChartData
+    };
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingIndication(null);
@@ -155,14 +227,95 @@ const Indications = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Indicações</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Nova Indicação</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowCharts(!showCharts)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}</span>
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nova Indicação</span>
+          </button>
+        </div>
       </div>
+
+      {/* Seção de Gráficos */}
+      {showCharts && (
+        <div className="mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico por Origem */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicações por Origem</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().originChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico por Status */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicações por Status</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={generateChartsData().statusChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {generateChartsData().statusChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index % 4]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico por Segmento */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicações por Segmento</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().segmentChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico Mensal */}
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicações por Mês</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={generateChartsData().monthlyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#F59E0B" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabela para desktop */}
       <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">

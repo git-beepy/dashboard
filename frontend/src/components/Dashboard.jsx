@@ -42,16 +42,227 @@ const Dashboard = () => {
       });
 
       if (response.status === 200) {
+        console.log('Dashboard data received:', response.data);
         setDashboardData(response.data);
       } else {
         console.error('Erro ao buscar dados do dashboard:', response.statusText);
-        setDashboardData(getMockData(user?.role));
+        // Buscar dados das outras páginas como fallback
+        await fetchFallbackData();
       }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
-      setDashboardData(getMockData(user?.role));
+      // Buscar dados das outras páginas como fallback
+      await fetchFallbackData();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFallbackData = async () => {
+    try {
+      // Buscar dados das páginas individuais
+      const [indicationsRes, commissionsRes, usersRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/indications`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        axios.get(`${API_BASE_URL}/commissions`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        user?.role === 'admin' ? axios.get(`${API_BASE_URL}/users`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }) : Promise.resolve({ data: [] })
+      ]);
+
+      const indications = indicationsRes.data || [];
+      const commissions = commissionsRes.data || [];
+      const users = usersRes.data || [];
+
+      // Processar dados para o dashboard
+      const processedData = processDataForDashboard(indications, commissions, users);
+      setDashboardData(processedData);
+    } catch (error) {
+      console.error('Erro ao buscar dados de fallback:', error);
+      setDashboardData(getMockData(user?.role));
+    }
+  };
+
+  const processDataForDashboard = (indications, commissions, users) => {
+    if (user?.role === 'admin') {
+      // Processar dados para admin
+      const totalIndications = indications.length;
+      const approvedIndications = indications.filter(i => i.status === 'aprovado').length;
+      const activeAmbassadors = users.filter(u => u.role === 'embaixadora').length;
+      
+      // Comissões do mês atual
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const monthlyCommissions = commissions
+        .filter(c => {
+          const commissionDate = new Date(c.createdAt || c.created_at);
+          return commissionDate.getMonth() + 1 === currentMonth && 
+                 commissionDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
+
+      // Taxa de conversão
+      const conversionRate = totalIndications > 0 ? (approvedIndications / totalIndications * 100) : 0;
+
+      // Indicações por mês
+      const monthlyData = {};
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      
+      // Inicializar meses
+      months.forEach((month, index) => {
+        monthlyData[month] = 0;
+      });
+
+      // Contar indicações por mês
+      indications.forEach(indication => {
+        if (indication.createdAt || indication.created_at) {
+          const date = new Date(indication.createdAt || indication.created_at);
+          const monthIndex = date.getMonth();
+          const monthName = months[monthIndex];
+          monthlyData[monthName]++;
+        }
+      });
+
+      const indicationsMonthly = Object.entries(monthlyData).map(([month, count]) => ({
+        month,
+        count
+      }));
+
+      // Leads por origem
+      const originData = {};
+      indications.forEach(indication => {
+        const origin = indication.origin || 'Não informado';
+        originData[origin] = (originData[origin] || 0) + 1;
+      });
+
+      const leadsOrigin = Object.entries(originData).map(([name, value]) => ({
+        name,
+        value
+      }));
+
+      // Conversão por segmento
+      const segmentData = {};
+      indications.forEach(indication => {
+        const segment = indication.segment || 'Não informado';
+        if (!segmentData[segment]) {
+          segmentData[segment] = { total: 0, converted: 0 };
+        }
+        segmentData[segment].total++;
+        if (indication.status === 'aprovado') {
+          segmentData[segment].converted++;
+        }
+      });
+
+      const conversionBySegment = Object.entries(segmentData).map(([segment, data]) => ({
+        segment,
+        total: data.total,
+        converted: data.converted,
+        rate: data.total > 0 ? (data.converted / data.total * 100) : 0
+      }));
+
+      // Top embaixadoras
+      const ambassadorData = {};
+      indications.forEach(indication => {
+        const ambassadorId = indication.ambassadorId || indication.ambassador_id || 'Não informado';
+        ambassadorData[ambassadorId] = (ambassadorData[ambassadorId] || 0) + 1;
+      });
+
+      const topAmbassadors = Object.entries(ambassadorData)
+        .map(([id, indications]) => {
+          const ambassador = users.find(u => u.id === id);
+          return {
+            name: ambassador ? ambassador.name : `Embaixadora ${id}`,
+            indications
+          };
+        })
+        .sort((a, b) => b.indications - a.indications)
+        .slice(0, 10);
+
+      return {
+        stats: {
+          totalIndications,
+          monthlyCommissions,
+          activePercentage: conversionRate,
+          activeAmbassadors
+        },
+        charts: {
+          indicationsMonthly,
+          leadsOrigin,
+          conversionBySegment,
+          salesMonthly: indicationsMonthly.map(item => ({
+            month: item.month,
+            value: item.count * 1000 // Simular valor de vendas
+          })),
+          topAmbassadors
+        }
+      };
+    } else {
+      // Processar dados para embaixadora
+      const userIndications = indications.filter(i => 
+        i.ambassadorId === user.id || i.ambassador_id === user.id
+      );
+      const userCommissions = commissions.filter(c => 
+        c.ambassadorId === user.id || c.ambassador_id === user.id
+      );
+
+      const totalIndications = userIndications.length;
+      const totalSales = userIndications.filter(i => i.status === 'aprovado').length;
+      const conversionRate = totalIndications > 0 ? (totalSales / totalIndications * 100) : 0;
+
+      // Comissão do mês atual
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const monthlyCommission = userCommissions
+        .filter(c => {
+          const commissionDate = new Date(c.createdAt || c.created_at);
+          return commissionDate.getMonth() + 1 === currentMonth && 
+                 commissionDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
+
+      // Comissões por mês
+      const commissionsData = [];
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      
+      months.forEach((month, index) => {
+        const monthCommissions = userCommissions
+          .filter(c => {
+            const date = new Date(c.createdAt || c.created_at);
+            return date.getMonth() === index;
+          })
+          .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
+        
+        commissionsData.push({
+          month,
+          comissao: monthCommissions
+        });
+      });
+
+      // Dados por segmento
+      const segmentData = {};
+      userIndications.forEach(indication => {
+        const segment = indication.segment || 'Não informado';
+        segmentData[segment] = (segmentData[segment] || 0) + 1;
+      });
+
+      const totalSegmentIndications = Object.values(segmentData).reduce((sum, count) => sum + count, 0);
+      const segmentChartData = Object.entries(segmentData).map(([name, count], index) => ({
+        name: name.toUpperCase(),
+        value: totalSegmentIndications > 0 ? (count / totalSegmentIndications * 100) : 0,
+        color: ['#EF4444', '#3B82F6', '#8B5CF6', '#F59E0B'][index % 4]
+      }));
+
+      return {
+        totalIndications,
+        totalSales,
+        monthlyCommission,
+        conversionRate,
+        commissionsData,
+        segmentData: segmentChartData
+      };
     }
   };
 
@@ -478,34 +689,37 @@ const Dashboard = () => {
         </div>
 
         {/* Métricas principais */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="metric-card card-light-green">
-            <div className="p-6">
-              <p className="text-gray-700 text-sm font-medium">TOTAL DE</p>
-              <p className="text-gray-700 text-sm font-medium">INDICAÇÕES</p>
-              <p className="text-4xl font-bold text-gray-900 mt-2">{dashboardData?.totalIndications || 120}</p>
-              <p className="text-green-600 text-sm mt-2">+{dashboardData?.conversionRate || 30}% de conversão</p>
-            </div>
-          </div>
-
-          <div className="metric-card card-light-yellow">
-            <div className="p-6">
-              <p className="text-gray-700 text-sm font-medium">TOTAL DE</p>
-              <p className="text-gray-700 text-sm font-medium">VENDAS</p>
-              <p className="text-4xl font-bold text-gray-900 mt-2">{dashboardData?.totalSales || 36}</p>
-              <p className="text-orange-600 text-sm mt-2">+13% acima da média</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="metric-card card-green">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-black text-sm font-medium">TOTAL DE INDICAÇÕES</p>
+                <p className="text-black text-2xl font-bold mt-1">{dashboardData?.totalIndications || 0}</p>
+                <p className="text-black/70 text-sm mt-2">+{dashboardData?.conversionRate || 0}% de conversão</p>
+              </div>
+              <Target className="h-8 w-8 text-black/80" />
             </div>
           </div>
 
           <div className="metric-card card-yellow">
-            <div className="p-6 relative">
-              <p className="text-white text-sm font-medium">COMISSÃO DO MÊS</p>
-              <p className="text-4xl font-bold text-white mt-2">R$ {dashboardData?.monthlyCommission || 900},00</p>
-              <p className="text-white/80 text-sm mt-2">Total a receber em julho /2025</p>
-              <p className="text-white/80 text-xs">pagamento até 31/07/2025</p>
-              <div className="absolute top-4 right-4 bg-white/20 rounded-lg p-2">
-                <span className="text-white text-xs font-bold">20/30</span>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-black text-sm font-medium">TOTAL DE VENDAS</p>
+                <p className="text-black text-2xl font-bold mt-1">{dashboardData?.totalSales || 0}</p>
+                <p className="text-black/70 text-sm mt-2">+13% acima da média</p>
               </div>
+              <TrendingUp className="h-8 w-8 text-black/80" />
+            </div>
+          </div>
+
+          <div className="metric-card card-purple">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white text-sm font-medium">COMISSÃO DO MÊS</p>
+                <p className="text-white text-2xl font-bold mt-1">R$ {dashboardData?.monthlyCommission || 0},00</p>
+                <p className="text-white/80 text-sm mt-2">Total a receber em {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-white/80" />
             </div>
           </div>
         </div>
@@ -516,7 +730,7 @@ const Dashboard = () => {
           <Card className="metric-card">
             <CardHeader>
               <CardTitle className="text-gray-900">Suas comissões mês a mês</CardTitle>
-              <div className="text-sm text-gray-500">JUNHO</div>
+              <div className="text-sm text-gray-500">{new Date().getFullYear()}</div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -526,7 +740,7 @@ const Dashboard = () => {
                   <YAxis />
                   <Tooltip
                     formatter={(value) => [`R$ ${value}`, 'Comissão']}
-                    labelFormatter={(label) => `${label}: Comissão: 600`}
+                    labelFormatter={(label) => `${label}`}
                   />
                   <Line
                     type="monotone"
@@ -545,7 +759,7 @@ const Dashboard = () => {
           <Card className="metric-card">
             <CardHeader>
               <CardTitle className="text-gray-900">Indicações por segmento do cliente</CardTitle>
-              <div className="text-sm text-gray-500">This year</div>
+              <div className="text-sm text-gray-500">Este ano</div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
