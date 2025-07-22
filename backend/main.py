@@ -782,28 +782,8 @@ def get_admin_dashboard():
         
         leads_origin = [{"name": k, "value": v} for k, v in origins_data.items()]
         
-        # 3. Conversão por segmento
-        segments_data = {}
-        converted_segments = {}
-        for indication_doc in all_indications:
-            indication_data = indication_doc.to_dict()
-            segment = indication_data.get("segment", "geral")
-            converted = indication_data.get("converted", False)
-            
-            segments_data[segment] = segments_data.get(segment, 0) + 1
-            if converted:
-                converted_segments[segment] = converted_segments.get(segment, 0) + 1
-        
+        # 3. Conversão por segmento - dados limpos para população manual
         conversion_by_segment = []
-        for segment, total in segments_data.items():
-            converted = converted_segments.get(segment, 0)
-            conversion_rate = (converted / total * 100) if total > 0 else 0
-            conversion_by_segment.append({
-                "segment": segment,
-                "total": total,
-                "converted": converted,
-                "rate": round(conversion_rate, 2)
-            })
         
         # 4. Vendas mês a mês (comissões como proxy)
         sales_monthly = []

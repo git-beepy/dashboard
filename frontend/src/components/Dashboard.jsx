@@ -389,12 +389,7 @@ const Dashboard = () => {
           { month: 'Nov', comissao: 250 },
           { month: 'Dez', comissao: 250 }
         ],
-        segmentData: [
-          { name: 'ROUPA', value: 15.8, color: '#EF4444' },
-          { name: 'CLÍNICAS', value: 29.1, color: '#3B82F6' },
-          { name: 'LOJA DE ROUPA', value: 22.2, color: '#8B5CF6' },
-          { name: 'ÓTICAS', value: 32.9, color: '#F59E0B' }
-        ]
+        segmentData: []
       };
     }
   };
@@ -600,22 +595,7 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                  <span>ROUPA</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                  <span>CLÍNICAS</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
-                  <span>LOJA DE ROUPA</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-                  <span>ÓTICAS</span>
-                </div>
+                {/* Dados dinâmicos serão carregados do backend */}
               </div>
             </CardContent>
           </Card>
