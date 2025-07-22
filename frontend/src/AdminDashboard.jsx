@@ -19,10 +19,12 @@ const AdminDashboard = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     clientName: '',
+    companyName: '',
     clientEmail: '',
     clientPhone: '',
     origin: 'website',
-    segment: 'geral'
+    segment: '',
+    customSegment: ''
   });
 
   useEffect(() => {
@@ -147,10 +149,12 @@ const AdminDashboard = () => {
     setShowModal(false);
     setFormData({
       clientName: '',
+      companyName: '',
       clientEmail: '',
       clientPhone: '',
       origin: 'website',
-      segment: 'geral'
+      segment: '',
+      customSegment: ''
     });
   };
 
@@ -411,7 +415,21 @@ const AdminDashboard = () => {
                   value={formData.clientName}
                   onChange={(e) => setFormData({...formData, clientName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="Digite o nome completo do cliente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome da Empresa
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Digite o nome da empresa"
                 />
               </div>
 
@@ -425,7 +443,7 @@ const AdminDashboard = () => {
                   value={formData.clientEmail}
                   onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="exemplo@email.com"
                 />
               </div>
 
@@ -439,7 +457,7 @@ const AdminDashboard = () => {
                   value={formData.clientPhone}
                   onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="(11) 99999-9999"
                 />
               </div>
 
@@ -453,6 +471,7 @@ const AdminDashboard = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="website">Website</option>
+                  <option value="whatsapp">WhatsApp</option>
                   <option value="social_media">Redes Sociais</option>
                   <option value="referral">Indicação</option>
                   <option value="event">Evento</option>
@@ -469,12 +488,45 @@ const AdminDashboard = () => {
                   onChange={(e) => setFormData({...formData, segment: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="geral">Geral</option>
-                  <option value="premium">Premium</option>
-                  <option value="corporativo">Corporativo</option>
-                  <option value="startup">Startup</option>
+                  <option value="">Selecione o segmento</option>
+                  <option value="saude">🏥 Saúde</option>
+                  <option value="educacao_pesquisa">🧠 Educação e Pesquisa</option>
+                  <option value="juridico">🏛️ Jurídico</option>
+                  <option value="administracao_negocios">💼 Administração e Negócios</option>
+                  <option value="engenharias">🏢 Engenharias</option>
+                  <option value="tecnologia_informacao">💻 Tecnologia da Informação</option>
+                  <option value="financeiro_bancario">🏦 Financeiro e Bancário</option>
+                  <option value="marketing_vendas_comunicacao">📣 Marketing, Vendas e Comunicação</option>
+                  <option value="industria_producao">🏭 Indústria e Produção</option>
+                  <option value="construcao_civil">🧱 Construção Civil</option>
+                  <option value="transportes_logistica">🚛 Transportes e Logística</option>
+                  <option value="comercio_varejo">🛒 Comércio e Varejo</option>
+                  <option value="turismo_hotelaria_eventos">🏨 Turismo, Hotelaria e Eventos</option>
+                  <option value="gastronomia_alimentacao">🍳 Gastronomia e Alimentação</option>
+                  <option value="agronegocio_meio_ambiente">🌱 Agronegócio e Meio Ambiente</option>
+                  <option value="artes_cultura_design">🎭 Artes, Cultura e Design</option>
+                  <option value="midias_digitais_criativas">📱 Mídias Digitais e Criativas</option>
+                  <option value="seguranca_defesa">👮 Segurança e Defesa</option>
+                  <option value="servicos_gerais">🧹 Serviços Gerais</option>
+                  <option value="outro">Outro</option>
                 </select>
               </div>
+
+              {formData.segment === 'outro' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Especifique o Segmento
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.customSegment || ''}
+                    onChange={(e) => setFormData({...formData, customSegment: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Digite o segmento específico"
+                  />
+                </div>
+              )}
             </form>
 
             {/* Footer */}

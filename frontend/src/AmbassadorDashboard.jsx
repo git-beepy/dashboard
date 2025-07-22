@@ -18,10 +18,12 @@ const AmbassadorDashboard = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     clientName: '',
+    companyName: '',
     clientEmail: '',
     clientPhone: '',
     origin: 'website',
-    segment: 'geral'
+    segment: '',
+    customSegment: ''
   });
 
   useEffect(() => {
@@ -94,10 +96,12 @@ const AmbassadorDashboard = () => {
     setShowModal(false);
     setFormData({
       clientName: '',
+      companyName: '',
       clientEmail: '',
       clientPhone: '',
       origin: 'website',
-      segment: 'geral'
+      segment: '',
+      customSegment: ''
     });
   };
 
@@ -123,11 +127,11 @@ const AmbassadorDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-green-400">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-900">Comissão do Mês</CardTitle>
-            <DollarSign className="h-4 w-4 text-gray-900" />
+            <CardTitle className="text-sm font-medium text-black">Comissão do Mês</CardTitle>
+            <DollarSign className="h-4 w-4 text-black" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-black">
               R$ {dashboardData?.stats?.current_month_commission?.toFixed(2) || '0,00'}
             </div>
           </CardContent>
@@ -302,7 +306,21 @@ const AmbassadorDashboard = () => {
                   value={formData.clientName}
                   onChange={(e) => setFormData({...formData, clientName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="Digite o nome completo do cliente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome da Empresa
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Digite o nome da empresa"
                 />
               </div>
 
@@ -316,7 +334,7 @@ const AmbassadorDashboard = () => {
                   value={formData.clientEmail}
                   onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="exemplo@email.com"
                 />
               </div>
 
@@ -330,7 +348,7 @@ const AmbassadorDashboard = () => {
                   value={formData.clientPhone}
                   onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder=""
+                  placeholder="(11) 99999-9999"
                 />
               </div>
 
@@ -344,6 +362,7 @@ const AmbassadorDashboard = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="website">Website</option>
+                  <option value="whatsapp">WhatsApp</option>
                   <option value="social_media">Redes Sociais</option>
                   <option value="referral">Indicação</option>
                   <option value="event">Evento</option>
@@ -360,12 +379,45 @@ const AmbassadorDashboard = () => {
                   onChange={(e) => setFormData({...formData, segment: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="geral">Geral</option>
-                  <option value="premium">Premium</option>
-                  <option value="corporativo">Corporativo</option>
-                  <option value="startup">Startup</option>
+                  <option value="">Selecione o segmento</option>
+                  <option value="saude">🏥 Saúde</option>
+                  <option value="educacao_pesquisa">🧠 Educação e Pesquisa</option>
+                  <option value="juridico">🏛️ Jurídico</option>
+                  <option value="administracao_negocios">💼 Administração e Negócios</option>
+                  <option value="engenharias">🏢 Engenharias</option>
+                  <option value="tecnologia_informacao">💻 Tecnologia da Informação</option>
+                  <option value="financeiro_bancario">🏦 Financeiro e Bancário</option>
+                  <option value="marketing_vendas_comunicacao">📣 Marketing, Vendas e Comunicação</option>
+                  <option value="industria_producao">🏭 Indústria e Produção</option>
+                  <option value="construcao_civil">🧱 Construção Civil</option>
+                  <option value="transportes_logistica">🚛 Transportes e Logística</option>
+                  <option value="comercio_varejo">🛒 Comércio e Varejo</option>
+                  <option value="turismo_hotelaria_eventos">🏨 Turismo, Hotelaria e Eventos</option>
+                  <option value="gastronomia_alimentacao">🍳 Gastronomia e Alimentação</option>
+                  <option value="agronegocio_meio_ambiente">🌱 Agronegócio e Meio Ambiente</option>
+                  <option value="artes_cultura_design">🎭 Artes, Cultura e Design</option>
+                  <option value="midias_digitais_criativas">📱 Mídias Digitais e Criativas</option>
+                  <option value="seguranca_defesa">👮 Segurança e Defesa</option>
+                  <option value="servicos_gerais">🧹 Serviços Gerais</option>
+                  <option value="outro">Outro</option>
                 </select>
               </div>
+
+              {formData.segment === 'outro' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Especifique o Segmento
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.customSegment || ''}
+                    onChange={(e) => setFormData({...formData, customSegment: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Digite o segmento específico"
+                  />
+                </div>
+              )}
             </form>
 
             {/* Footer */}
