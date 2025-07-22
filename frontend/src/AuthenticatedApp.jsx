@@ -36,8 +36,12 @@ const AuthenticatedApp = () => {
   // Estados para indicação
   const [formData, setFormData] = useState({
     client_name: '',
+    company_name: '',
+    client_email: '',
     client_contact: '',
+    origin: 'website',
     niche: '',
+    custom_segment: '',
     observations: ''
   });
 
@@ -510,35 +514,105 @@ const AuthenticatedApp = () => {
                     id="client_name"
                     value={formData.client_name}
                     onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                    placeholder="Digite o nome completo do cliente"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="client_contact">Contato</Label>
+                  <Label htmlFor="company_name">Nome da Empresa</Label>
+                  <Input
+                    id="company_name"
+                    value={formData.company_name || ''}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    placeholder="Digite o nome da empresa"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="client_email">Email</Label>
+                  <Input
+                    id="client_email"
+                    type="email"
+                    value={formData.client_email || ''}
+                    onChange={(e) => setFormData({ ...formData, client_email: e.target.value })}
+                    placeholder="exemplo@email.com"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="client_contact">Telefone</Label>
                   <Input
                     id="client_contact"
                     value={formData.client_contact}
                     onChange={(e) => setFormData({ ...formData, client_contact: e.target.value })}
-                    placeholder="Telefone ou email"
+                    placeholder="(11) 99999-9999"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="niche">Nicho</Label>
-                  <Select value={formData.niche} onValueChange={(value) => setFormData({ ...formData, niche: value })}>
+                  <Label htmlFor="origin">Origem</Label>
+                  <Select value={formData.origin || 'website'} onValueChange={(value) => setFormData({ ...formData, origin: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione o nicho" />
+                      <SelectValue placeholder="Selecione a origem" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="roupa">Roupa</SelectItem>
-                      <SelectItem value="clinicas">Clínicas</SelectItem>
-                      <SelectItem value="loja de roupa">Loja de Roupa</SelectItem>
-                      <SelectItem value="oticas">Óticas</SelectItem>
+                      <SelectItem value="website">Website</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="social_media">Redes Sociais</SelectItem>
+                      <SelectItem value="referral">Indicação</SelectItem>
+                      <SelectItem value="event">Evento</SelectItem>
+                      <SelectItem value="other">Outro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="niche">Segmento</Label>
+                  <Select value={formData.niche} onValueChange={(value) => setFormData({ ...formData, niche: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o segmento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="saude">🏥 Saúde</SelectItem>
+                      <SelectItem value="educacao_pesquisa">🧠 Educação e Pesquisa</SelectItem>
+                      <SelectItem value="juridico">🏛️ Jurídico</SelectItem>
+                      <SelectItem value="administracao_negocios">💼 Administração e Negócios</SelectItem>
+                      <SelectItem value="engenharias">🏢 Engenharias</SelectItem>
+                      <SelectItem value="tecnologia_informacao">💻 Tecnologia da Informação</SelectItem>
+                      <SelectItem value="financeiro_bancario">🏦 Financeiro e Bancário</SelectItem>
+                      <SelectItem value="marketing_vendas_comunicacao">📣 Marketing, Vendas e Comunicação</SelectItem>
+                      <SelectItem value="industria_producao">🏭 Indústria e Produção</SelectItem>
+                      <SelectItem value="construcao_civil">🧱 Construção Civil</SelectItem>
+                      <SelectItem value="transportes_logistica">🚛 Transportes e Logística</SelectItem>
+                      <SelectItem value="comercio_varejo">🛒 Comércio e Varejo</SelectItem>
+                      <SelectItem value="turismo_hotelaria_eventos">🏨 Turismo, Hotelaria e Eventos</SelectItem>
+                      <SelectItem value="gastronomia_alimentacao">🍳 Gastronomia e Alimentação</SelectItem>
+                      <SelectItem value="agronegocio_meio_ambiente">🌱 Agronegócio e Meio Ambiente</SelectItem>
+                      <SelectItem value="artes_cultura_design">🎭 Artes, Cultura e Design</SelectItem>
+                      <SelectItem value="midias_digitais_criativas">📱 Mídias Digitais e Criativas</SelectItem>
+                      <SelectItem value="seguranca_defesa">👮 Segurança e Defesa</SelectItem>
+                      <SelectItem value="servicos_gerais">🧹 Serviços Gerais</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.niche === 'outro' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="custom_segment">Especifique o Segmento</Label>
+                    <Input
+                      id="custom_segment"
+                      value={formData.custom_segment || ''}
+                      onChange={(e) => setFormData({ ...formData, custom_segment: e.target.value })}
+                      placeholder="Digite o segmento específico"
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="observations">Observações</Label>
@@ -704,14 +778,14 @@ const AuthenticatedApp = () => {
 
           <Card className="bg-yellow-400">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Comissão do Mês</CardTitle>
-              <DollarSign className="h-4 w-4 text-gray-900" />
+              <CardTitle className="text-sm font-medium text-black">Comissão do Mês</CardTitle>
+              <DollarSign className="h-4 w-4 text-black" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-2xl font-bold text-black">
                 R$ {ambassadorData.stats.current_month_commission.toFixed(2)}
               </div>
-              <p className="text-xs text-gray-700">
+              <p className="text-xs text-black">
                 Total a receber em julho/2025
               </p>
             </CardContent>
