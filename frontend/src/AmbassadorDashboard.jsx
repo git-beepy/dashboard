@@ -265,16 +265,13 @@ const AmbassadorDashboard = () => {
                   <h3 className="font-medium">{indication.client_name}</h3>
                   <p className="text-sm text-gray-500">{indication.client_contact}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(indication.created_at).toLocaleDateString('pt-BR')}
+                    {new Date(indication.created_at).toLocaleDateString('pt-BR')} • {indication.niche}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge className={getStatusColor(indication.status)}>
                     {indication.status}
                   </Badge>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">{indication.niche}</p>
-                  </div>
                 </div>
               </div>
             ))}
