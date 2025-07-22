@@ -212,6 +212,44 @@ def verify_token():
 
 
 # Rotas de indicações
+@app.route("/indications/ambassador", methods=["GET", "OPTIONS"])
+@jwt_required()
+def get_ambassador_indications():
+    if request.method == "OPTIONS":
+        return "", 200
+        
+    try:
+        if not db:
+            return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
+
+        current_user_id = get_jwt_identity()
+        user_doc = db.collection("users").document(current_user_id).get()
+
+        if not user_doc.exists:
+            return safe_jsonify({"error": "Usuário não encontrado"}, 404)
+
+        user_data = user_doc.to_dict()
+
+        # Retorna apenas indicações da embaixadora logada
+        indications_ref = db.collection("indications").where(field_path="ambassadorId", op_string="==",
+                                                             value=current_user_id)
+
+        docs = indications_ref.stream()
+        indications = []
+
+        for doc in docs:
+            indication_data = doc.to_dict()
+            indication_data["id"] = doc.id
+            indication_data = serialize_firestore_data(indication_data)
+            indications.append(indication_data)
+
+        return safe_jsonify({"indications": indications}, 200)
+
+    except Exception as e:
+        print(f"Erro ao buscar indicações da embaixadora: {str(e)}")
+        return safe_jsonify({"error": str(e)}, 500)
+
+
 @app.route("/indications", methods=["GET", "OPTIONS"])
 @jwt_required()
 def get_indications():
@@ -278,25 +316,25 @@ def create_indication():
         if not client_name or not client_email or not client_phone:
             return safe_jsonify({"error": "Nome, email e telefone do cliente são obrigatórios"}, 400)
 
+        # Criar nova indicação
         indication_data = {
-            "ambassadorId": current_user_id,
-            "clientName": client_name,
-            "clientEmail": client_email,
-            "clientPhone": client_phone,
+            "client_name": client_name,
+            "email": client_email,
+            "phone": client_phone,
             "origin": data.get("origin", "website"),
             "segment": data.get("segment", "geral"),
-            "converted": False,
+            "status": "agendado",
+            "ambassadorId": current_user_id,  # ID da embaixadora que criou a indicação
             "createdAt": datetime.now(),
-            "updatedAt": datetime.now()
+            "updatedAt": datetime.now(),
+            "converted": False
         }
 
         doc_ref = db.collection("indications").add(indication_data)
         indication_data["id"] = doc_ref[1].id
         indication_data = serialize_firestore_data(indication_data)
 
-        print(f"Indicação criada com sucesso: {indication_data['id']}")
         return safe_jsonify(indication_data, 201)
-
     except Exception as e:
         print(f"Erro ao criar indicação: {str(e)}")
         return safe_jsonify({"error": str(e)}, 500)
@@ -342,8 +380,71 @@ def update_indication_status(indication_id):
         if new_status not in ["agendado", "aprovado", "não aprovado"]:
             return safe_jsonify({"error": "Status inválido. Use 'agendado', 'aprovado' ou 'não aprovado'"}, 400)
 
+        # Buscar a indicação para obter dados do embaixador
+        indication_doc = db.collection("indications").document(indication_id).get()
+        if not indication_doc.exists:
+            return safe_jsonify({"error": "Indicação não encontrada"}, 404)
+
+        indication_data = indication_doc.to_dict()
+        
         update_data = {"status": new_status, "updatedAt": datetime.now()}
         db.collection("indications").document(indication_id).update(update_data)
+
+        # Se a indicação foi aprovada, criar ou atualizar comissão
+        if new_status == "aprovado":
+            # Buscar dados da embaixadora
+            ambassador_id = indication_data.get("ambassadorId")
+            ambassador_name = "Embaixadora não encontrada"
+            
+            if ambassador_id:
+                ambassador_doc = db.collection("users").document(ambassador_id).get()
+                if ambassador_doc.exists:
+                    ambassador_data = ambassador_doc.to_dict()
+                    ambassador_name = ambassador_data.get("name", "Nome não informado")
+            
+            # Verificar se já existe uma comissão para esta indicação
+            existing_commission_query = db.collection("commissions").where(
+                field_path="indicationId", op_string="==", value=indication_id
+            ).limit(1)
+            existing_commissions = list(existing_commission_query.stream())
+
+            if existing_commissions:
+                # Atualizar comissão existente
+                commission_doc = existing_commissions[0]
+                commission_update_data = {
+                    "status": "pendente",
+                    "ambassadorName": ambassador_name,
+                    "clientName": indication_data.get("client_name", "Cliente não informado"),
+                    "updatedAt": datetime.now()
+                }
+                db.collection("commissions").document(commission_doc.id).update(commission_update_data)
+                print(f"Comissão atualizada para indicação aprovada: {indication_id}")
+            else:
+                # Criar nova comissão
+                commission_data = {
+                    "ambassadorId": indication_data.get("ambassadorId"),
+                    "ambassadorName": ambassador_name,
+                    "indicationId": indication_id,
+                    "clientName": indication_data.get("client_name", "Cliente não informado"),
+                    "value": data.get("commissionValue", 500.0),  # Valor padrão ou vindo do request
+                    "status": "pendente",
+                    "createdAt": datetime.now(),
+                    "updatedAt": datetime.now()
+                }
+                
+                doc_ref = db.collection("commissions").add(commission_data)
+                print(f"Nova comissão criada para indicação aprovada: {indication_id} -> {doc_ref[1].id}")
+
+        elif new_status == "não aprovado":
+            # Se rejeitada, remover comissão se existir
+            existing_commission_query = db.collection("commissions").where(
+                field_path="indicationId", op_string="==", value=indication_id
+            )
+            existing_commissions = list(existing_commission_query.stream())
+
+            for commission_doc in existing_commissions:
+                db.collection("commissions").document(commission_doc.id).delete()
+                print(f"Comissão removida para indicação rejeitada: {indication_id}")
 
         return safe_jsonify({"message": "Status da indicação atualizado com sucesso"}, 200)
 
@@ -513,9 +614,44 @@ def get_commissions():
         docs = commissions_ref.stream()
         commissions = []
 
+        # Buscar todos os usuários para mapear embaixadores
+        users_ref = db.collection("users")
+        all_users = list(users_ref.stream())
+        users_map = {}
+        for user_doc in all_users:
+            users_map[user_doc.id] = user_doc.to_dict()
+
         for doc in docs:
             commission_data = doc.to_dict()
             commission_data["id"] = doc.id
+            
+            # Adicionar dados do embaixador
+            ambassador_id = commission_data.get("ambassadorId")
+            if ambassador_id and ambassador_id in users_map:
+                ambassador_data = users_map[ambassador_id]
+                commission_data["ambassadorName"] = ambassador_data.get("name", "Nome não disponível")
+                commission_data["ambassadorEmail"] = ambassador_data.get("email", "Email não disponível")
+            else:
+                commission_data["ambassadorName"] = "Embaixador não encontrado"
+                commission_data["ambassadorEmail"] = "Email não disponível"
+            
+            # Adicionar dados da indicação se existir
+            indication_id = commission_data.get("indicationId")
+            if indication_id:
+                try:
+                    indication_doc = db.collection("indications").document(indication_id).get()
+                    if indication_doc.exists:
+                        indication_data = indication_doc.to_dict()
+                        commission_data["indicationStatus"] = indication_data.get("status", "pendente")
+                        commission_data["clientName"] = indication_data.get("clientName", "Cliente não disponível")
+                        commission_data["clientEmail"] = indication_data.get("clientEmail", "Email não disponível")
+                    else:
+                        commission_data["indicationStatus"] = "indicação não encontrada"
+                        commission_data["clientName"] = commission_data.get("clientName", "Cliente não disponível")
+                except Exception as e:
+                    print(f"Erro ao buscar indicação {indication_id}: {e}")
+                    commission_data["indicationStatus"] = "erro ao buscar"
+
             commission_data = serialize_firestore_data(commission_data)
             commissions.append(commission_data)
 
@@ -605,17 +741,36 @@ def get_admin_dashboard():
         indications_monthly = []
         all_indications = list(db.collection("indications").stream())
         
+        # Contar indicações por status
+        approved_indications = 0
+        pending_indications = 0
+        rejected_indications = 0
+        
+        for indication_doc in all_indications:
+            indication_data = indication_doc.to_dict()
+            status = indication_data.get("status", "pendente")
+            if status == "aprovado":
+                approved_indications += 1
+            elif status == "não aprovado":
+                rejected_indications += 1
+            else:
+                pending_indications += 1
+        
         for i in range(6):
             month_date = datetime.now() - timedelta(days=30*i)
             month_count = 0
+            month_approved = 0
             for indication_doc in all_indications:
                 indication_data = indication_doc.to_dict()
                 created_at = indication_data.get("createdAt")
                 if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
                     month_count += 1
+                    if indication_data.get("status") == "aprovado":
+                        month_approved += 1
             indications_monthly.append({
                 "month": month_date.strftime("%b"),
-                "count": month_count
+                "count": month_count,
+                "approved": month_approved
             })
         
         # 2. Leads por origem
@@ -647,7 +802,7 @@ def get_admin_dashboard():
                 "segment": segment,
                 "total": total,
                 "converted": converted,
-                "rate": round(conversion_rate, 1)
+                "rate": round(conversion_rate, 2)
             })
         
         # 4. Vendas mês a mês (comissões como proxy)
@@ -720,7 +875,11 @@ def get_admin_dashboard():
             "totalCommissions": commissions_count,
             "monthlyCommissions": monthly_commissions,
             "activeAmbassadors": active_ambassadors,
-            "activePercentage": round(active_percentage, 1)
+            "activePercentage": round(active_percentage, 2),
+            "approvedIndications": approved_indications,
+            "pendingIndications": pending_indications,
+            "rejectedIndications": rejected_indications,
+            "approvalRate": round((approved_indications / indications_count * 100) if indications_count > 0 else 0, 2)
         }
         
         dashboard_data["charts"] = {
@@ -767,7 +926,21 @@ def get_ambassador_dashboard():
         indications = list(indications_ref.stream())
 
         total_indications = len(indications)
-        converted_indications = sum(1 for doc in indications if doc.to_dict().get("converted", False))
+        
+        # Contar por status
+        approved_indications = 0
+        pending_indications = 0
+        rejected_indications = 0
+        
+        for doc in indications:
+            indication_data = doc.to_dict()
+            status = indication_data.get("status", "agendado")
+            if status == "aprovado":
+                approved_indications += 1
+            elif status == "não aprovado":
+                rejected_indications += 1
+            else:
+                pending_indications += 1
 
         # Comissões da embaixadora
         commissions_ref = db.collection("commissions").where(field_path="ambassadorId", op_string="==",
@@ -775,13 +948,101 @@ def get_ambassador_dashboard():
         commissions = list(commissions_ref.stream())
 
         total_commissions = sum(doc.to_dict().get("value", 0) for doc in commissions)
+        
+        # Comissões do mês atual
+        current_month = datetime.now().month
+        current_year = datetime.now().year
+        monthly_commission = 0
+        
+        for commission_doc in commissions:
+            commission_data = commission_doc.to_dict()
+            created_at = commission_data.get("createdAt")
+            if created_at and created_at.month == current_month and created_at.year == current_year:
+                monthly_commission += commission_data.get("value", 0)
+
+        # Dados para gráficos
+        # 1. Indicações mês a mês (últimos 12 meses)
+        monthly_indications = []
+        for i in range(12):
+            month_date = datetime.now() - timedelta(days=30*i)
+            month_count = 0
+            for indication_doc in indications:
+                indication_data = indication_doc.to_dict()
+                created_at = indication_data.get("createdAt")
+                if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
+                    month_count += 1
+            monthly_indications.append({
+                "month": month_date.strftime("%b/%Y"),
+                "count": month_count
+            })
+
+        # 2. Comissões mês a mês (últimos 12 meses)
+        monthly_commissions = []
+        for i in range(12):
+            month_date = datetime.now() - timedelta(days=30*i)
+            month_total = 0
+            for commission_doc in commissions:
+                commission_data = commission_doc.to_dict()
+                created_at = commission_data.get("createdAt")
+                if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
+                    month_total += commission_data.get("value", 0)
+            monthly_commissions.append({
+                "month": month_date.strftime("%b/%Y"),
+                "total": month_total
+            })
+
+        # 3. Indicações por segmento
+        niche_stats = {}
+        for indication_doc in indications:
+            indication_data = indication_doc.to_dict()
+            niche = indication_data.get("segment", "geral")
+            niche_stats[niche] = niche_stats.get(niche, 0) + 1
+            if converted:
+                converted_segments[segment] = converted_segments.get(segment, 0) + 1
+
+        niche_data = []
+        total_for_percentage = sum(niche_stats.values())
+        for niche, count in niche_stats.items():
+            converted_niche = converted_segments.get(niche, 0)
+            conversion_rate = (converted_niche / count * 100) if count > 0 else 0
+            percent = (count / total_for_percentage) if total_for_percentage > 0 else 0
+            niche_data.append({
+                "niche": niche,
+                "count": count,
+                "converted": converted_niche,
+                "percent": percent,
+                "conversion_rate": conversion_rate
+            })
+
+        # 4. Performance mensal (últimos 5 meses)
+        monthly_performance = []
+        for i in range(5):
+            month_date = datetime.now() - timedelta(days=30*i)
+            month_indications = 0
+            for indication_doc in indications:
+                indication_data = indication_doc.to_dict()
+                created_at = indication_data.get("createdAt")
+                if created_at and created_at.month == month_date.month and created_at.year == month_date.year:
+                    month_indications += 1
+            monthly_performance.append({
+                "month": month_date.strftime("%b"),
+                "total_indications": month_indications
+            })
 
         dashboard_data["stats"] = {
-            "totalIndications": total_indications,
-            "convertedIndications": converted_indications,
-            "conversionRate": (converted_indications / total_indications * 100) if total_indications > 0 else 0,
-            "totalCommissions": total_commissions
+            "total_indications": total_indications,
+            "approved_sales": approved_indications,
+            "conversion_rate": round((approved_indications / total_indications * 100) if total_indications > 0 else 0, 2),
+            "current_month_commission": monthly_commission,
+            "total_commissions": total_commissions,
+            "pending_indications": pending_indications,
+            "rejected_indications": rejected_indications
         }
+
+        dashboard_data["monthly_indications"] = monthly_indications
+        dashboard_data["monthly_commissions"] = monthly_commissions
+        dashboard_data["niche_stats"] = niche_data
+        dashboard_data["monthly_performance"] = monthly_performance
 
         dashboard_data = serialize_firestore_data(dashboard_data)
         return safe_jsonify(dashboard_data, 200)

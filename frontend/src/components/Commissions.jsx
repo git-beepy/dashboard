@@ -412,16 +412,24 @@ const Commissions = () => {
                   <tr key={commission.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {commission.ambassadorId}
+                        {commission.ambassadorName || 'Nome não disponível'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {commission.ambassadorEmail || 'Email não disponível'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {indication?.clientName || 'N/A'}
+                        {commission.clientName || indication?.clientName || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {indication?.clientEmail || ''}
+                        {commission.clientEmail || indication?.clientEmail || ''}
                       </div>
+                      {commission.indicationStatus && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Status: {commission.indicationStatus}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -474,14 +482,22 @@ const Commissions = () => {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Embaixadora: {commission.ambassadorId}
+                    {commission.ambassadorName || 'Nome não disponível'}
                   </h3>
+                  <p className="text-sm text-gray-500 mb-1">
+                    {commission.ambassadorEmail || 'Email não disponível'}
+                  </p>
                   <p className="text-sm text-gray-600">
-                    {indication?.clientName || 'N/A'}
+                    Cliente: {commission.clientName || indication?.clientName || 'N/A'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {indication?.clientEmail || ''}
+                    {commission.clientEmail || indication?.clientEmail || ''}
                   </p>
+                  {commission.indicationStatus && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Status da Indicação: {commission.indicationStatus}
+                    </p>
+                  )}
                 </div>
                 {user.role === 'admin' && (
                   <div className="flex space-x-2 ml-4">

@@ -266,16 +266,16 @@ const AdminDashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={dashboardData?.niche_conversion || []}
+                  data={dashboardData?.charts?.conversionBySegment || []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ niche, conversion_rate }) => `${niche} ${conversion_rate.toFixed(1)}%`}
+                  label={({ segment, rate }) => `${segment} ${rate}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="total"
                 >
-                  {(dashboardData?.niche_conversion || []).map((entry, index) => (
+                  {(dashboardData?.charts?.conversionBySegment || []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

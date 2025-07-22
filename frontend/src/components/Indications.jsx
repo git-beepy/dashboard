@@ -12,9 +12,9 @@ const Indications = () => {
   const [editingIndication, setEditingIndication] = useState(null);
   const [showCharts, setShowCharts] = useState(false);
   const [formData, setFormData] = useState({
-    clientName: '',
-    clientEmail: '',
-    clientPhone: '',
+    client_name: '',
+    email: '',
+    phone: '',
     origin: 'website',
     segment: 'saude',
     customSegment: ''
@@ -59,9 +59,9 @@ const Indications = () => {
       setShowModal(false);
       setEditingIndication(null);
       setFormData({
-        clientName: '',
-        clientEmail: '',
-        clientPhone: '',
+        client_name: '',
+        email: '',
+        phone: '',
         origin: 'website',
         segment: 'saude',
         customSegment: ''
@@ -85,9 +85,9 @@ const Indications = () => {
     const isStandardSegment = standardSegments.includes(indication.segment);
     
     setFormData({
-      clientName: indication.clientName,
-      clientEmail: indication.clientEmail,
-      clientPhone: indication.clientPhone,
+      client_name: indication.client_name,
+      email: indication.email,
+      phone: indication.phone,
       origin: indication.origin,
       segment: isStandardSegment ? indication.segment : 'outro',
       customSegment: isStandardSegment ? '' : indication.segment
@@ -349,13 +349,13 @@ const Indications = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        {indication.clientName}
+                        {indication.client_name}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{indication.clientEmail}</div>
-                    <div className="text-sm text-gray-500">{indication.clientPhone}</div>
+                    <div className="text-sm text-gray-900">{indication.email}</div>
+                    <div className="text-sm text-gray-500">{indication.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -419,10 +419,10 @@ const Indications = () => {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-gray-900">
-                  {indication.clientName}
+                  {indication.client_name}
                 </h3>
-                <p className="text-sm text-gray-600">{indication.clientEmail}</p>
-                <p className="text-xs text-gray-500">{indication.clientPhone}</p>
+                <p className="text-sm text-gray-600">{indication.email}</p>
+                <p className="text-xs text-gray-500">{indication.phone}</p>
               </div>
               <div className="flex space-x-2 ml-4">
                 <button
@@ -507,8 +507,8 @@ const Indications = () => {
                 <input
                   type="text"
                   required
-                  value={formData.clientName}
-                  onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder=""
                 />
@@ -521,8 +521,8 @@ const Indications = () => {
                 <input
                   type="email"
                   required
-                  value={formData.clientEmail}
-                  onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder=""
                 />
@@ -535,8 +535,8 @@ const Indications = () => {
                 <input
                   type="tel"
                   required
-                  value={formData.clientPhone}
-                  onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder=""
                 />
@@ -551,11 +551,12 @@ const Indications = () => {
                   onChange={(e) => setFormData({...formData, origin: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="website">Website</option>
-                  <option value="social_media">Redes Sociais</option>
-                  <option value="referral">Indicação</option>
-                  <option value="event">Evento</option>
-                  <option value="other">Outro</option>
+                  <option value="website">🌐 Website</option>
+                  <option value="social_media">📱 Redes Sociais</option>
+                  <option value="whatsapp">💬 WhatsApp</option>
+                  <option value="referral">🤝 Indicação</option>
+                  <option value="event">🎟️ Evento</option>
+                  <option value="other">❓ Outro</option>
                 </select>
               </div>
 

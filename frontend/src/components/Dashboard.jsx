@@ -468,7 +468,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">COMISSÕES DO MÊS</p>
-                <p className="text-black text-2xl font-bold mt-1">R$ {dashboardData?.stats?.monthlyCommissions?.toLocaleString('pt-BR') || '0'},00</p>
+                <p className="text-black text-2xl font-bold mt-1">R$ {(dashboardData?.stats?.monthlyCommissions || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
               <DollarSign className="h-8 w-8 text-black/80" />
             </div>
@@ -478,7 +478,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-black text-sm font-medium">CONVERSÃO INDICAÇÕES</p>
-                <p className="text-2xl font-bold text-black mt-1">{dashboardData?.stats?.activePercentage || 0}%</p>
+                <p className="text-2xl font-bold text-black mt-1">{(dashboardData?.stats?.activePercentage || 0).toFixed(2)}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-black/80" />
             </div>
@@ -519,7 +519,7 @@ const Dashboard = () => {
                     <Pie
                       data={[
                         { name: 'Ativas', value: dashboardData?.stats?.activePercentage || 0, fill: COLORS.purple },
-                        { name: 'Não Ativas', value: 100 - (dashboardData?.stats?.activePercentage || 0), fill: '#E5E7EB' }
+                        { name: 'Não Ativas', value: parseFloat((100 - (dashboardData?.stats?.activePercentage || 0)).toFixed(2)), fill: '#E5E7EB' }
                       ]}
                       cx="50%"
                       cy="50%"
@@ -529,12 +529,12 @@ const Dashboard = () => {
                       dataKey="value"
                     >
                     </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
+                    <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="mt-4 text-center">
-                <p className="text-sm text-gray-600">ATIVAS: {dashboardData?.stats?.activePercentage || 0}% | NÃO ATIVA: {100 - (dashboardData?.stats?.activePercentage || 0)}%</p>
+                <p className="text-sm text-gray-600">ATIVAS: {(dashboardData?.stats?.activePercentage || 0).toFixed(2)}% | NÃO ATIVA: {(100 - (dashboardData?.stats?.activePercentage || 0)).toFixed(2)}%</p>
               </div>
             </CardContent>
           </Card>
@@ -631,7 +631,7 @@ const Dashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Vendas']} />
+                  <Tooltip formatter={(value) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Vendas']} />
                   <Bar dataKey="vendas" fill={COLORS.purple} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -695,7 +695,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-black text-sm font-medium">TOTAL DE INDICAÇÕES</p>
                 <p className="text-black text-2xl font-bold mt-1">{dashboardData?.totalIndications || 0}</p>
-                <p className="text-black/70 text-sm mt-2">+{dashboardData?.conversionRate || 0}% de conversão</p>
+                <p className="text-black/70 text-sm mt-2">+{(dashboardData?.conversionRate || 0).toFixed(2)}% de conversão</p>
               </div>
               <Target className="h-8 w-8 text-black/80" />
             </div>
@@ -716,7 +716,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white text-sm font-medium">COMISSÃO DO MÊS</p>
-                <p className="text-white text-2xl font-bold mt-1">R$ {dashboardData?.monthlyCommission || 0},00</p>
+                <p className="text-white text-2xl font-bold mt-1">R$ {(dashboardData?.monthlyCommission || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 <p className="text-white/80 text-sm mt-2">Total a receber em {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
               </div>
               <DollarSign className="h-8 w-8 text-white/80" />
@@ -739,7 +739,7 @@ const Dashboard = () => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip
-                    formatter={(value) => [`R$ ${value}`, 'Comissão']}
+                    formatter={(value) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Comissão']}
                     labelFormatter={(label) => `${label}`}
                   />
                   <Line
@@ -777,7 +777,7 @@ const Dashboard = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `${value}%`} />
+                  <Tooltip formatter={(value) => `${value.toFixed(2)}%`} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
