@@ -6,178 +6,96 @@ import axios from 'axios';
 import { Plus, Edit, Trash2, Check, X, BarChart3, PieChart } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
-const Indications = () => {
-  const { user, API_BASE_URL } = useAuth();
-  const [indications, setIndications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingIndication, setEditingIndication] = useState(null);
-  const [showCharts, setShowCharts] = useState(false);
-  const [formData, setFormData] = useState({
-    client_name: "",
-    email: "",
-    phone: "",
-    origin: "website",
-    segment: "saude",
-    customSegment: ""
-  });
+  const Indications = () => {
+    const { user, API_BASE_URL } = useAuth();
+    const [indications, setIndications] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [editingIndication, setEditingIndication] = useState(null);
+    const [showCharts, setShowCharts] = useState(false);
+    const [formData, setFormData] = useState({
+      client_name: ",
+      email: ",
+      phone: ",
+      origin: "website",
+      segment: "saude",
+      customSegment: ""
+    });
 
-  const fetchIndications = async () => {
-    if (!user || !user.id) {
-      setLoading(false);
-      return; // Não busca indicações se o usuário não estiver logado ou não tiver ID
-    }
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/indications`, {
-        params: { ambassador_id: user.id } // Passa o ID do usuário logado como ambassador_id
+    // Função para gerar dados dos gráficos
+    const generateChartsData = () => {
+      // Dados por origem
+      const originData = {};
+      indications.forEach(indication => {
+        const originKey = indication.origin || "Não informado";
+        const originDisplayName = getOriginDisplayName(originKey);
+        originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
       });
-      setIndications(response.data.indications);
-    } catch (error) {
-      console.error("Erro ao buscar indicações:", error);
-      // Tratar erro, talvez exibir uma mensagem para o usuário
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Função para gerar dados dos gráficos
-  const generateChartsData = () => {
-    // Dados por origem
-    const originData = {};
-    indications.forEach(indication => {
-      const originKey = indication.origin || "Não informado";
-      const originDisplayName = getOriginDisplayName(originKey);
-      originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
-    });
+      const originChartData = Object.entries(originData).map(([name, value]) => ({
+        name,
+        value
+      }));
 
-    const originChartData = Object.entries(originData).map(([name, value]) => ({
-      name,
-      value
-    }));
+      // Dados por segmento
+      const segmentData = {};
+      indications.forEach(indication => {
+        const segmentKey = indication.segment || "Não informado";
+        const segmentDisplayName = getSegmentDisplayName(segmentKey);
+        segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
+      });
 
-    // Dados por segmento
-    const segmentData = {};
-    indications.forEach(indication => {
-      const segmentKey = indication.segment || "Não informado";
-      const segmentDisplayName = getSegmentDisplayName(segmentKey);
-      segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
-    });
+      const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
+        name,
+        value
+      }));
 
-    const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
-      name,
-      value
-    }));
-
-    // Dados por mês (últimos 6 meses)
-    const monthlyData = {};
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
-      monthlyData[monthKey] = 0;
-    }
-
-    indications.forEach(indication => {
-      if (indication.createdAt) {
-        const date = new Date(indication.createdAt);
+      // Dados por mês (últimos 6 meses)
+      const monthlyData = {};
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
-        if (monthlyData.hasOwnProperty(monthKey)) {
-          monthlyData[monthKey]++;
+        monthlyData[monthKey] = 0;
+      }
+
+      indications.forEach(indication => {
+        if (indication.createdAt) {
+          const date = new Date(indication.createdAt);
+          const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+          if (monthlyData.hasOwnProperty(monthKey)) {
+            monthlyData[monthKey]++;
+          }
         }
-      }
-    });
+      });
 
-    const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
-      month,
-      count
-    }));
-    // Dados por status
-    const statusData = {};
-    indications.forEach(indication => {
-      const status = indication.status || "Pendente";
-      statusData[status] = (statusData[status] || 0) + 1;
-    });
+      const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
+        month,
+        count
+      }));
+      // Dados por status
+      const statusData = {};
+      indications.forEach(indication => {
+        const status = indication.status || "Pendente";
+        statusData[status] = (statusData[status] || 0) + 1;
+      });
 
-    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
-      name,
-      value
-    }));
+      const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+        name,
+        value
+      }));
 
-    return {
-      originChartData,
-      segmentChartData,
-      statusChartData,
-      monthlyChartData
+      return {
+        originChartData,
+        segmentChartData,
+        statusChartData,
+        monthlyChartData
+      };
     };
-  };
 
-  useEffect(() => {
-    fetchIndications();
-  }, [user, API_BASE_URL]); // Adiciona user e API_BASE_URL como dependências
-
-  // Funções de manipulação (handleEdit, handleDelete, etc.)
-  const handleEdit = (indication) => {
-    setEditingIndication(indication);
-    setFormData({
-        client_name: indication.client_name,
-        email: indication.email,
-        phone: indication.phone,
-        origin: indication.origin,
-        segment: indication.segment,
-        customSegment: indication.segment === 'outro' ? indication.customSegment : ''
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/indications/${id}`);
-      fetchIndications(); // Recarregar indicações após deletar
-    } catch (error) {
-      console.error("Erro ao deletar indicação:", error);
-    }
-  };
-
-  const updateIndicationStatus = async (id, status) => {
-    try {
-      await axios.put(`${API_BASE_URL}/indications/${id}/status`, { status });
-      fetchIndications(); // Recarregar indicações após atualizar status
-    } catch (error) {
-      console.error("Erro ao atualizar status da indicação:", error);
-    }
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingIndication(null);
-    setFormData({
-        client_name: "",
-        email: "",
-        phone: "",
-        origin: "website",
-        segment: "saude",
-        customSegment: ""
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingIndication) {
-        // Lógica para editar
-        await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, formData);
-      } else {
-        // Lógica para criar
-        await axios.post(`${API_BASE_URL}/indications`, formData);
-      }
-      closeModal();
-      fetchIndications(); // Recarregar indicações após criar/editar
-    } catch (error) {
-      console.error("Erro ao salvar indicação:", error);
-    }
-  };
-
+    useEffect(() => {
+      fetchIndications();
+    }, []);
 
   if (loading) {
     return (
@@ -328,11 +246,11 @@ const Indications = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {getOriginDisplayName(indication.origin)}
+                      {indication.origin}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getSegmentDisplayName(indication.segment)}
+                    {indication.segment}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {user.role === 'admin' ? (
@@ -415,13 +333,13 @@ const Indications = () => {
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Origem:</span>
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 ml-2">
-                  {getOriginDisplayName(indication.origin)}
+                  {indication.origin}
                 </span>
               </div>
 
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Segmento:</span>
-                <span className="text-gray-900 text-xs text-right ml-2 break-words max-w-[60%]">{getSegmentDisplayName(indication.segment)}</span>
+                <span className="text-gray-900 text-xs text-right ml-2 break-words max-w-[60%]">{indication.segment}</span>
               </div>
 
               <div className="flex justify-between items-start">
@@ -585,5 +503,3 @@ const Indications = () => {
 };
 
 export default Indications;
-
-
