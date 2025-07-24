@@ -201,12 +201,38 @@ const Indications = () => {
       count
     }));
 
+    // Dados por Status
+    const statusData = {};
+    indications.forEach(indication => {
+      const statusKey = indication.status || 'Pendente';
+      statusData[statusKey] = (statusData[statusKey] || 0) + 1;
+    });
+
+    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+      name,
+      value
+    }));
+
     return {
       originChartData,
       segmentChartData,
       statusChartData,
       monthlyChartData
     };
+  };
+
+  // Função auxiliar para obter nome de exibição da origem
+  const getOriginDisplayName = (originKey) => {
+    const originOptions = getOriginOptions();
+    const option = originOptions.find(opt => opt.value === originKey);
+    return option ? option.label : originKey;
+  };
+
+  // Função auxiliar para obter nome de exibição do segmento
+  const getSegmentDisplayName = (segmentKey) => {
+    const segmentOptions = getSegmentOptions();
+    const option = segmentOptions.find(opt => opt.value === segmentKey);
+    return option ? option.label : segmentKey;
   };
 
   const closeModal = () => {
