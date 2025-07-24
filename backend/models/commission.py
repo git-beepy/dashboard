@@ -12,7 +12,7 @@ class Commission(db.Model):
     indication_id = db.Column(db.Integer, db.ForeignKey('indication.id'), nullable=False)
     ambassador_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     parcel_number = db.Column(db.Integer, nullable=False)  # 1, 2 ou 3
-    amount = db.Column(db.Float, nullable=False, default=300.0)
+    amount = db.Column(db.Float, nullable=False)
     due_date = db.Column(db.DateTime, nullable=False)
     payment_status = db.Column(db.String(20), default='pendente')  # pendente, pago
     payment_date = db.Column(db.DateTime)

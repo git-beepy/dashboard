@@ -162,7 +162,7 @@ def update_indication():
                         indication_id=indication.id,
                         ambassador_id=indication.ambassador_id,
                         parcel_number=parcel,
-                        amount=300.0,
+                        amount=data.get("commission_amount", 0.0),
                         due_date=due_date,
                         payment_status='pendente',
                         created_at=datetime.now()
@@ -232,7 +232,7 @@ def update_indication_status():
                     indication_id=indication.id,
                     ambassador_id=indication.ambassador_id,
                     parcel_number=parcel,
-                    amount=300.0,
+                    amount=data.get("commission_amount", 0.0),
                     due_date=due_date,
                     payment_status='pendente',
                     created_at=datetime.now()

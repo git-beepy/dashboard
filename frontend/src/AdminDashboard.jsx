@@ -82,7 +82,7 @@ const AdminDashboard = () => {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, commission_amount: indication.amount }),
       });
 
       if (response.ok) {
@@ -257,7 +257,7 @@ const AdminDashboard = () => {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} />
+                <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>

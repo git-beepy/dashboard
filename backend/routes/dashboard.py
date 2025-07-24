@@ -197,14 +197,10 @@ def admin_dashboard():
         monthly_sales = []
         for i in range(12):
             date = datetime.now() - timedelta(days=30 * (11 - i))
-            month_sales_count = Indication.query.filter(
-                Indication.status == 'aprovado',
-                extract('month', Indication.createdAt) == date.month,
-                extract('year', Indication.createdAt) == date.year
-            ).count()
-            
-            # Simular valor de vendas (R$ 1000 por venda aprovada)
-            month_sales_value = month_sales_count * 1000
+            month_sales_value = db.session.query(func.sum(Commission.amount)).filter(
+                extract(\'month\', Commission.createdAt) == date.month,
+                extract(\'year\', Commission.createdAt) == date.year
+            ).scalar() or 0
             
             monthly_sales.append({
                 'month': months[date.month - 1],
