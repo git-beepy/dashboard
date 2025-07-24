@@ -1,226 +1,101 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getOriginOptions } from '../constants/origins';
-import { getSegmentOptions } from '../constants/segments';
+import { getOriginOptions, getOriginDisplayName } from '../constants/origins';
+import { getSegmentOptions, getSegmentDisplayName } from '../constants/segments';
 import axios from 'axios';
 import { Plus, Edit, Trash2, Check, X, BarChart3, PieChart } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
-const Indications = () => {
-  const { user, API_BASE_URL } = useAuth();
-  const [indications, setIndications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingIndication, setEditingIndication] = useState(null);
-  const [showCharts, setShowCharts] = useState(false);
-  const [formData, setFormData] = useState({
-    client_name: '',
-    email: '',
-    phone: '',
-    origin: 'website',
-    segment: 'saude',
-    customSegment: ''
-  });
-
-  useEffect(() => {
-    fetchIndications();
-  }, []);
-
-  const fetchIndications = async () => {
-    try {
-      console.log('Buscando indicações...');
-      const response = await axios.get(`${API_BASE_URL}/indications`);
-      console.log('Indicações recebidas:', response.data);
-      setIndications(response.data);
-    } catch (error) {
-      console.error('Erro ao buscar indicações:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    console.log('handleSubmit chamado');
-    console.log('editingIndication:', editingIndication);
-    console.log('formData:', formData);
-    
-    try {
-      const submitData = { ...formData };
-      
-      // Se o segmento for "outro" e há um segmento customizado, usar o customizado
-      if (formData.segment === 'outro' && formData.customSegment.trim()) {
-        submitData.segment = formData.customSegment.trim();
-      }
-      
-      // Remover o campo customSegment antes de enviar
-      delete submitData.customSegment;
-      
-      console.log('submitData:', submitData);
-      
-      if (editingIndication) {
-        console.log('Editando indicação:', editingIndication.id);
-        console.log('URL da requisição:', `${API_BASE_URL}/indications/${editingIndication.id}`);
-        console.log('Dados sendo enviados:', submitData);
-        
-        const response = await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, submitData);
-        console.log('Resposta da API:', response.status, response.data);
-      } else {
-        console.log('Criando nova indicação');
-        await axios.post(`${API_BASE_URL}/indications`, submitData);
-      }
-      
-      console.log('Chamando fetchIndications após salvar...');
-      fetchIndications();
-      setShowModal(false);
-      setEditingIndication(null);
-      setFormData({
-        client_name: '',
-        email: '',
-        phone: '',
-        origin: 'website',
-        segment: 'saude',
-        customSegment: ''
-      });
-    } catch (error) {
-      console.error("Erro ao salvar indicação:", error);
-      alert("Erro ao salvar indicação. Verifique o console para mais detalhes.");
-    }
-  };
-
-  const handleEdit = (indication) => {
-    setEditingIndication(indication);
-    
-    // Verificar se o segmento é um dos padrões ou customizado
-    const standardSegments = [
-      'saude', 'educacao_pesquisa', 'juridico', 'administracao_negocios', 'engenharias',
-      'tecnologia_informacao', 'financeiro_bancario', 'marketing_vendas_comunicacao',
-      'industria_producao', 'construcao_civil', 'transportes_logistica', 'comercio_varejo',
-      'turismo_hotelaria_eventos', 'gastronomia_alimentacao', 'agronegocio_meio_ambiente',
-      'artes_cultura_design', 'midias_digitais_criativas', 'seguranca_defesa', 'servicos_gerais'
-    ];
-    const isStandardSegment = standardSegments.includes(indication.segment);
-    
-    setFormData({
-      client_name: indication.client_name,
-      email: indication.email,
-      phone: indication.phone,
-      origin: indication.origin,
-      segment: isStandardSegment ? indication.segment : 'outro',
-      customSegment: isStandardSegment ? '' : indication.segment
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir esta indicação?')) {
-      try {
-        await axios.delete(`${API_BASE_URL}/indications/${id}`);
-        fetchIndications();
-      } catch (error) {
-        console.error("Erro ao excluir indicação:", error);
-      alert("Erro ao excluir indicação. Verifique o console para mais detalhes.");
-      }
-    }
-  };
-
-  const toggleConversion = async (indication) => {
-    try {
-      await axios.put(`${API_BASE_URL}/indications/${indication.id}`, {
-        converted: !indication.converted
-      });
-      fetchIndications();
-    } catch (error) {
-      console.error("Erro ao atualizar conversão:", error);
-      alert("Erro ao atualizar conversão. Verifique o console para mais detalhes.");
-    }
-  };
-
-  const updateIndicationStatus = async (indicationId, newStatus) => {
-    try {
-      await axios.put(`${API_BASE_URL}/indications/${indicationId}/status`, {
-        status: newStatus
-      });
-      fetchIndications();
-    } catch (error) {
-      console.error("Erro ao atualizar status da indicação:", error);
-      alert("Erro ao atualizar status da indicação. Verifique o console para mais detalhes.");
-    }
-  };
-
-  // Função para gerar dados dos gráficos
-  const generateChartsData = () => {
-    // Dados por origem
-    const originData = {};
-    indications.forEach(indication => {
-      const originKey = indication.origin || 'Não informado';
-      const originDisplayName = getOriginDisplayName(originKey);
-      originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
+  const Indications = () => {
+    const { user, API_BASE_URL } = useAuth();
+    const [indications, setIndications] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [editingIndication, setEditingIndication] = useState(null);
+    const [showCharts, setShowCharts] = useState(false);
+    const [formData, setFormData] = useState({
+      client_name: ",
+      email: ",
+      phone: ",
+      origin: "website",
+      segment: "saude",
+      customSegment: ""
     });
 
-    const originChartData = Object.entries(originData).map(([name, value]) => ({
-      name,
-      value
-    }));
+    // Função para gerar dados dos gráficos
+    const generateChartsData = () => {
+      // Dados por origem
+      const originData = {};
+      indications.forEach(indication => {
+        const originKey = indication.origin || "Não informado";
+        const originDisplayName = getOriginDisplayName(originKey);
+        originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
+      });
 
-    // Dados por segmento
-    const segmentData = {};
-    indications.forEach(indication => {
-      const segmentKey = indication.segment || "Não informado";
-      const segmentDisplayName = getSegmentDisplayName(segmentKey);
-      segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
-    });
+      const originChartData = Object.entries(originData).map(([name, value]) => ({
+        name,
+        value
+      }));
 
-    const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
-      name,
-      value
-    }));
+      // Dados por segmento
+      const segmentData = {};
+      indications.forEach(indication => {
+        const segmentKey = indication.segment || "Não informado";
+        const segmentDisplayName = getSegmentDisplayName(segmentKey);
+        segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
+      });
 
-    // Dados por mês (últimos 6 meses)
-    const monthlyData = {};
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-      monthlyData[monthKey] = 0;
-    }
+      const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
+        name,
+        value
+      }));
 
-    indications.forEach(indication => {
-      if (indication.createdAt) {
-        const date = new Date(indication.createdAt);
-        const monthKey = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-        if (monthlyData.hasOwnProperty(monthKey)) {
-          monthlyData[monthKey]++;
+      // Dados por mês (últimos 6 meses)
+      const monthlyData = {};
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+        monthlyData[monthKey] = 0;
+      }
+
+      indications.forEach(indication => {
+        if (indication.createdAt) {
+          const date = new Date(indication.createdAt);
+          const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+          if (monthlyData.hasOwnProperty(monthKey)) {
+            monthlyData[monthKey]++;
+          }
         }
-      }
-    });
+      });
 
-    const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
-      month,
-      count
-    }));
+      const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
+        month,
+        count
+      }));
+      // Dados por status
+      const statusData = {};
+      indications.forEach(indication => {
+        const status = indication.status || "Pendente";
+        statusData[status] = (statusData[status] || 0) + 1;
+      });
 
-    return {
-      originChartData,
-      segmentChartData,
-      statusChartData,
-      monthlyChartData
+      const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+        name,
+        value
+      }));
+
+      return {
+        originChartData,
+        segmentChartData,
+        statusChartData,
+        monthlyChartData
+      };
     };
-  };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingIndication(null);
-    setFormData({
-      client_name: '',
-      email: '',
-      phone: '',
-      origin: 'website',
-      segment: 'saude',
-      customSegment: ''
-    });
-  };
+    useEffect(() => {
+      fetchIndications();
+    }, []);
 
   if (loading) {
     return (
@@ -290,7 +165,7 @@ const Indications = () => {
                     label={({ name, value }) => `${name}: ${value}`}
                   >
                     {generateChartsData().statusChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#10B981', '#F59E0B', '#EF4444', '#8B5CF6'][index % 4]} />
+                      <Cell key={`cell-${index}`} fill={["#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][index % 4]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -453,7 +328,7 @@ const Indications = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Origem:</span>
@@ -461,12 +336,12 @@ const Indications = () => {
                   {indication.origin}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Segmento:</span>
                 <span className="text-gray-900 text-xs text-right ml-2 break-words max-w-[60%]">{indication.segment}</span>
               </div>
-              
+
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Status:</span>
                 <div className="ml-2">
@@ -628,4 +503,3 @@ const Indications = () => {
 };
 
 export default Indications;
-
