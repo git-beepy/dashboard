@@ -184,6 +184,30 @@ const Dashboard = () => {
         .sort((a, b) => b.indications - a.indications)
         .slice(0, 10);
 
+      // Vendas mês a mês (baseado em comissões reais)
+      const salesData = {};
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+      // Inicializar meses
+      months.forEach((month, index) => {
+        salesData[month] = 0;
+      });
+
+      // Somar comissões por mês
+      commissions.forEach(commission => {
+        if (commission.createdAt || commission.created_at) {
+          const date = new Date(commission.createdAt || commission.created_at);
+          const monthIndex = date.getMonth();
+          const monthName = months[monthIndex];
+          salesData[monthName] += commission.value || commission.amount || 0;
+        }
+      });
+
+      const salesMonthly = Object.entries(salesData).map(([month, value]) => ({
+        month,
+        value
+      }));
+
       return {
         stats: {
           totalIndications,
@@ -195,19 +219,16 @@ const Dashboard = () => {
           indicationsMonthly,
           leadsOrigin,
           conversionBySegment,
-          salesMonthly: indicationsMonthly.map(item => ({
-            month: item.month,
-            value: item.count * 1000 // Simular valor de vendas
-          })),
+          salesMonthly,
           topAmbassadors
         }
       };
     } else {
       // Processar dados para embaixadora
-      const userIndications = indications.filter(i => 
+      const userIndications = indications.filter(i =>
         i.ambassadorId === user.id || i.ambassador_id === user.id
       );
-      const userCommissions = commissions.filter(c => 
+      const userCommissions = commissions.filter(c =>
         c.ambassadorId === user.id || c.ambassador_id === user.id
       );
 
@@ -221,7 +242,7 @@ const Dashboard = () => {
       const monthlyCommission = userCommissions
         .filter(c => {
           const commissionDate = new Date(c.createdAt || c.created_at);
-          return commissionDate.getMonth() + 1 === currentMonth && 
+          return commissionDate.getMonth() + 1 === currentMonth &&
                  commissionDate.getFullYear() === currentYear;
         })
         .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
@@ -229,7 +250,7 @@ const Dashboard = () => {
       // Comissões por mês
       const commissionsData = [];
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-      
+
       months.forEach((month, index) => {
         const monthCommissions = userCommissions
           .filter(c => {
@@ -237,7 +258,7 @@ const Dashboard = () => {
             return date.getMonth() === index;
           })
           .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
-        
+
         commissionsData.push({
           month,
           comissao: monthCommissions
@@ -293,7 +314,7 @@ const Dashboard = () => {
           origin: '',
           segment: ''
         });
-        
+
         // Aguardar um pouco para garantir que o backend processou tudo
         setTimeout(() => {
           console.log("Atualizando dashboard após criação de indicação...");
@@ -442,7 +463,7 @@ const Dashboard = () => {
 
     const salesByMonth = dashboardData?.charts?.salesMonthly?.map(item => ({
       month: item.month,
-      vendas: item.value
+      value: item.value
     })) || [];
 
     const topAmbassadors = dashboardData?.charts?.topAmbassadors?.map(item => ({
@@ -624,7 +645,7 @@ const Dashboard = () => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip formatter={(value) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Vendas']} />
-                  <Bar dataKey="vendas" fill={COLORS.purple} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill={COLORS.purple} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
