@@ -14,13 +14,32 @@ const Indications = () => {
   const [editingIndication, setEditingIndication] = useState(null);
   const [showCharts, setShowCharts] = useState(false);
   const [formData, setFormData] = useState({
-    client_name: "", // CORRIGIDO
-    email: "",       // CORRIGIDO
-    phone: "",       // CORRIGIDO
+    client_name: "",
+    email: "",
+    phone: "",
     origin: "website",
     segment: "saude",
     customSegment: ""
   });
+
+  const fetchIndications = async () => {
+    if (!user || !user.id) {
+      setLoading(false);
+      return; // Não busca indicações se o usuário não estiver logado ou não tiver ID
+    }
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/indications`, {
+        params: { ambassador_id: user.id } // Passa o ID do usuário logado como ambassador_id
+      });
+      setIndications(response.data.indications);
+    } catch (error) {
+      console.error("Erro ao buscar indicações:", error);
+      // Tratar erro, talvez exibir uma mensagem para o usuário
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Função para gerar dados dos gráficos
   const generateChartsData = () => {
@@ -94,13 +113,10 @@ const Indications = () => {
   };
 
   useEffect(() => {
-    // A função fetchIndications não foi fornecida, mas o resto do código está aqui
-    // fetchIndications();
-    setLoading(false); // Adicionado para evitar loop de loading infinito
-  }, []);
+    fetchIndications();
+  }, [user, API_BASE_URL]); // Adiciona user e API_BASE_URL como dependências
 
-  // Funções de manipulação (handleEdit, handleDelete, etc.) não foram fornecidas
-  // Adicione-as aqui conforme necessário
+  // Funções de manipulação (handleEdit, handleDelete, etc.)
   const handleEdit = (indication) => {
     setEditingIndication(indication);
     setFormData({
@@ -109,19 +125,27 @@ const Indications = () => {
         phone: indication.phone,
         origin: indication.origin,
         segment: indication.segment,
-        customSegment: ''
+        customSegment: indication.segment === 'outro' ? indication.customSegment : ''
     });
     setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    // Lógica para deletar
-    console.log("Deletar indicação com ID:", id);
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/indications/${id}`);
+      fetchIndications(); // Recarregar indicações após deletar
+    } catch (error) {
+      console.error("Erro ao deletar indicação:", error);
+    }
   };
 
-  const updateIndicationStatus = (id, status) => {
-    // Lógica para atualizar status
-    console.log("Atualizar status da indicação ID:", id, "para:", status);
+  const updateIndicationStatus = async (id, status) => {
+    try {
+      await axios.put(`${API_BASE_URL}/indications/${id}/status`, { status });
+      fetchIndications(); // Recarregar indicações após atualizar status
+    } catch (error) {
+      console.error("Erro ao atualizar status da indicação:", error);
+    }
   };
 
   const closeModal = () => {
@@ -137,10 +161,21 @@ const Indications = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Lógica para criar ou editar
-    closeModal();
+    try {
+      if (editingIndication) {
+        // Lógica para editar
+        await axios.put(`${API_BASE_URL}/indications/${editingIndication.id}`, formData);
+      } else {
+        // Lógica para criar
+        await axios.post(`${API_BASE_URL}/indications`, formData);
+      }
+      closeModal();
+      fetchIndications(); // Recarregar indicações após criar/editar
+    } catch (error) {
+      console.error("Erro ao salvar indicação:", error);
+    }
   };
 
 
@@ -550,3 +585,5 @@ const Indications = () => {
 };
 
 export default Indications;
+
+
