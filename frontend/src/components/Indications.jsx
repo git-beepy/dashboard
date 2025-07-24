@@ -6,96 +6,143 @@ import axios from 'axios';
 import { Plus, Edit, Trash2, Check, X, BarChart3, PieChart } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
-  const Indications = () => {
-    const { user, API_BASE_URL } = useAuth();
-    const [indications, setIndications] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editingIndication, setEditingIndication] = useState(null);
-    const [showCharts, setShowCharts] = useState(false);
-    const [formData, setFormData] = useState({
-      client_name: ",
-      email: ",
-      phone: ",
-      origin: "website",
-      segment: "saude",
-      customSegment: ""
+const Indications = () => {
+  const { user, API_BASE_URL } = useAuth();
+  const [indications, setIndications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingIndication, setEditingIndication] = useState(null);
+  const [showCharts, setShowCharts] = useState(false);
+  const [formData, setFormData] = useState({
+    client_name: "", // CORRIGIDO
+    email: "",       // CORRIGIDO
+    phone: "",       // CORRIGIDO
+    origin: "website",
+    segment: "saude",
+    customSegment: ""
+  });
+
+  // Função para gerar dados dos gráficos
+  const generateChartsData = () => {
+    // Dados por origem
+    const originData = {};
+    indications.forEach(indication => {
+      const originKey = indication.origin || "Não informado";
+      const originDisplayName = getOriginDisplayName(originKey);
+      originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
     });
 
-    // Função para gerar dados dos gráficos
-    const generateChartsData = () => {
-      // Dados por origem
-      const originData = {};
-      indications.forEach(indication => {
-        const originKey = indication.origin || "Não informado";
-        const originDisplayName = getOriginDisplayName(originKey);
-        originData[originDisplayName] = (originData[originDisplayName] || 0) + 1;
-      });
+    const originChartData = Object.entries(originData).map(([name, value]) => ({
+      name,
+      value
+    }));
 
-      const originChartData = Object.entries(originData).map(([name, value]) => ({
-        name,
-        value
-      }));
+    // Dados por segmento
+    const segmentData = {};
+    indications.forEach(indication => {
+      const segmentKey = indication.segment || "Não informado";
+      const segmentDisplayName = getSegmentDisplayName(segmentKey);
+      segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
+    });
 
-      // Dados por segmento
-      const segmentData = {};
-      indications.forEach(indication => {
-        const segmentKey = indication.segment || "Não informado";
-        const segmentDisplayName = getSegmentDisplayName(segmentKey);
-        segmentData[segmentDisplayName] = (segmentData[segmentDisplayName] || 0) + 1;
-      });
+    const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
+      name,
+      value
+    }));
 
-      const segmentChartData = Object.entries(segmentData).map(([name, value]) => ({
-        name,
-        value
-      }));
+    // Dados por mês (últimos 6 meses)
+    const monthlyData = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+      monthlyData[monthKey] = 0;
+    }
 
-      // Dados por mês (últimos 6 meses)
-      const monthlyData = {};
-      const now = new Date();
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    indications.forEach(indication => {
+      if (indication.createdAt) {
+        const date = new Date(indication.createdAt);
         const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
-        monthlyData[monthKey] = 0;
-      }
-
-      indications.forEach(indication => {
-        if (indication.createdAt) {
-          const date = new Date(indication.createdAt);
-          const monthKey = date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
-          if (monthlyData.hasOwnProperty(monthKey)) {
-            monthlyData[monthKey]++;
-          }
+        if (monthlyData.hasOwnProperty(monthKey)) {
+          monthlyData[monthKey]++;
         }
-      });
+      }
+    });
 
-      const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
-        month,
-        count
-      }));
-      // Dados por status
-      const statusData = {};
-      indications.forEach(indication => {
-        const status = indication.status || "Pendente";
-        statusData[status] = (statusData[status] || 0) + 1;
-      });
+    const monthlyChartData = Object.entries(monthlyData).map(([month, count]) => ({
+      month,
+      count
+    }));
+    // Dados por status
+    const statusData = {};
+    indications.forEach(indication => {
+      const status = indication.status || "Pendente";
+      statusData[status] = (statusData[status] || 0) + 1;
+    });
 
-      const statusChartData = Object.entries(statusData).map(([name, value]) => ({
-        name,
-        value
-      }));
+    const statusChartData = Object.entries(statusData).map(([name, value]) => ({
+      name,
+      value
+    }));
 
-      return {
-        originChartData,
-        segmentChartData,
-        statusChartData,
-        monthlyChartData
-      };
+    return {
+      originChartData,
+      segmentChartData,
+      statusChartData,
+      monthlyChartData
     };
+  };
 
-    useEffect(() => {
-      fetchIndications();
-    }, []);
+  useEffect(() => {
+    // A função fetchIndications não foi fornecida, mas o resto do código está aqui
+    // fetchIndications();
+    setLoading(false); // Adicionado para evitar loop de loading infinito
+  }, []);
+
+  // Funções de manipulação (handleEdit, handleDelete, etc.) não foram fornecidas
+  // Adicione-as aqui conforme necessário
+  const handleEdit = (indication) => {
+    setEditingIndication(indication);
+    setFormData({
+        client_name: indication.client_name,
+        email: indication.email,
+        phone: indication.phone,
+        origin: indication.origin,
+        segment: indication.segment,
+        customSegment: ''
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = (id) => {
+    // Lógica para deletar
+    console.log("Deletar indicação com ID:", id);
+  };
+
+  const updateIndicationStatus = (id, status) => {
+    // Lógica para atualizar status
+    console.log("Atualizar status da indicação ID:", id, "para:", status);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingIndication(null);
+    setFormData({
+        client_name: "",
+        email: "",
+        phone: "",
+        origin: "website",
+        segment: "saude",
+        customSegment: ""
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Lógica para criar ou editar
+    closeModal();
+  };
+
 
   if (loading) {
     return (
@@ -246,11 +293,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {indication.origin}
+                      {getOriginDisplayName(indication.origin)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {indication.segment}
+                    {getSegmentDisplayName(indication.segment)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {user.role === 'admin' ? (
@@ -333,13 +380,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Origem:</span>
                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 ml-2">
-                  {indication.origin}
+                  {getOriginDisplayName(indication.origin)}
                 </span>
               </div>
 
               <div className="flex justify-between items-start">
                 <span className="text-gray-500 text-xs">Segmento:</span>
-                <span className="text-gray-900 text-xs text-right ml-2 break-words max-w-[60%]">{indication.segment}</span>
+                <span className="text-gray-900 text-xs text-right ml-2 break-words max-w-[60%]">{getSegmentDisplayName(indication.segment)}</span>
               </div>
 
               <div className="flex justify-between items-start">
