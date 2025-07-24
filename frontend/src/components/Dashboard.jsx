@@ -186,7 +186,6 @@ const Dashboard = () => {
 
       // Vendas mês a mês (baseado em comissões reais)
       const salesData = {};
-      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
       // Inicializar meses
       months.forEach((month, index) => {
