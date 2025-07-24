@@ -69,13 +69,12 @@ CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 # Registrar blueprints
 app.register_blueprint(users_bp, url_prefix='/users')
 
-
 # Rotas de autenticação
 @app.route("/auth/login", methods=["POST", "OPTIONS"])
 def login():
     if request.method == "OPTIONS":
         return "", 200
-
+    
     try:
         # Verificar se há dados JSON
         if not request.is_json:
@@ -184,7 +183,7 @@ def login():
 def verify_token():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         current_user_id = get_jwt_identity()
         if not db:
@@ -218,7 +217,7 @@ def verify_token():
 def get_ambassador_indications():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -256,7 +255,7 @@ def get_ambassador_indications():
 def get_indications():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -298,7 +297,7 @@ def get_indications():
 def create_indication():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -342,7 +341,7 @@ def create_indication():
             return safe_jsonify({"error": "Embaixador não encontrado"}, 404)
         commission_data = {
             "ambassadorId": current_user_id,
-            "ambassadorName": user_doc.to_dict().get("name", "Embaixador"),  # Obter nome do embaixador
+            "ambassadorName": user_doc.to_dict().get("name", "Embaixador"), # Obter nome do embaixador
             "indicationId": indication_data["id"],
             "clientName": client_name,
             "value": 500.0,  # Valor padrão da comissão
@@ -364,26 +363,26 @@ def create_indication():
 def update_indication(indication_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
 
         data = request.get_json()
         print(f"Dados recebidos para atualização: {data}")
-
+        
         update_data = {"updatedAt": datetime.now()}
 
         # Mapear campos do frontend para Firestore
         field_mapping = {
             "client_name": "client_name",
-            "email": "email",
+            "email": "email", 
             "phone": "phone",
             "origin": "origin",
             "segment": "segment",
             "converted": "converted"
         }
-
+        
         for frontend_field, firestore_field in field_mapping.items():
             if frontend_field in data:
                 update_data[firestore_field] = data[frontend_field]
@@ -398,13 +397,12 @@ def update_indication(indication_id):
         print(f"Erro ao atualizar indicação: {str(e)}")
         return safe_jsonify({"error": str(e)}, 500)
 
-
 @app.route("/indications/<indication_id>/status", methods=["PUT", "OPTIONS"])
 @jwt_required()
 def update_indication_status(indication_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -421,7 +419,7 @@ def update_indication_status(indication_id):
             return safe_jsonify({"error": "Indicação não encontrada"}, 404)
 
         indication_data = indication_doc.to_dict()
-
+        
         update_data = {"status": new_status, "updatedAt": datetime.now()}
         db.collection("indications").document(indication_id).update(update_data)
 
@@ -430,13 +428,13 @@ def update_indication_status(indication_id):
             # Buscar dados da embaixadora
             ambassador_id = indication_data.get("ambassadorId")
             ambassador_name = "Embaixadora não encontrada"
-
+            
             if ambassador_id:
                 ambassador_doc = db.collection("users").document(ambassador_id).get()
                 if ambassador_doc.exists:
                     ambassador_data = ambassador_doc.to_dict()
                     ambassador_name = ambassador_data.get("name", "Nome não informado")
-
+            
             # Verificar se já existe uma comissão para esta indicação
             existing_commission_query = db.collection("commissions").where(
                 field_path="indicationId", op_string="==", value=indication_id
@@ -466,7 +464,7 @@ def update_indication_status(indication_id):
                     "createdAt": datetime.now(),
                     "updatedAt": datetime.now()
                 }
-
+                
                 doc_ref = db.collection("commissions").add(commission_data)
                 print(f"Nova comissão criada para indicação aprovada: {indication_id} -> {doc_ref[1].id}")
 
@@ -487,13 +485,12 @@ def update_indication_status(indication_id):
         print(f"Erro ao atualizar status da indicação: {str(e)}")
         return safe_jsonify({"error": str(e)}, 500)
 
-
 @app.route("/indications/<indication_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_indication(indication_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -511,7 +508,7 @@ def delete_indication(indication_id):
 def get_users():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -550,7 +547,7 @@ def get_users():
 def create_user():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -566,7 +563,7 @@ def create_user():
             return safe_jsonify({"error": "Acesso negado"}, 403)
 
         data = request.get_json()
-
+        
         if not data:
             return safe_jsonify({"error": "Dados não fornecidos"}, 400)
 
@@ -578,13 +575,13 @@ def create_user():
 
         if not email:
             return safe_jsonify({"error": "Email é obrigatório"}, 400)
-
+        
         if not password:
             return safe_jsonify({"error": "Senha é obrigatória"}, 400)
-
+            
         if not name:
             return safe_jsonify({"error": "Nome é obrigatório"}, 400)
-
+            
         if not role:
             return safe_jsonify({"error": "Função é obrigatória"}, 400)
 
@@ -628,7 +625,7 @@ def create_user():
 def get_commissions():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -660,7 +657,7 @@ def get_commissions():
         for doc in docs:
             commission_data = doc.to_dict()
             commission_data["id"] = doc.id
-
+            
             # Adicionar dados do embaixador
             ambassador_id = commission_data.get("ambassadorId")
             if ambassador_id and ambassador_id in users_map:
@@ -670,7 +667,7 @@ def get_commissions():
             else:
                 commission_data["ambassadorName"] = "Embaixador não encontrado"
                 commission_data["ambassadorEmail"] = "Email não disponível"
-
+            
             # Adicionar dados da indicação se existir
             indication_id = commission_data.get("indicationId")
             if indication_id:
@@ -703,7 +700,7 @@ def get_commissions():
 def create_commission():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -736,7 +733,7 @@ def create_commission():
 def get_admin_dashboard():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -781,12 +778,12 @@ def get_admin_dashboard():
         # 1. Indicações mês a mês (últimos 6 meses)
         indications_monthly = []
         all_indications = list(db.collection("indications").stream())
-
+        
         # Contar indicações por status
         approved_indications = 0
         pending_indications = 0
         rejected_indications = 0
-
+        
         for indication_doc in all_indications:
             indication_data = indication_doc.to_dict()
             status = indication_data.get("status", "pendente")
@@ -796,9 +793,9 @@ def get_admin_dashboard():
                 rejected_indications += 1
             else:
                 pending_indications += 1
-
+        
         for i in range(6):
-            month_date = datetime.now() - timedelta(days=30 * i)
+            month_date = datetime.now() - timedelta(days=30*i)
             month_count = 0
             month_approved = 0
             for indication_doc in all_indications:
@@ -817,30 +814,30 @@ def get_admin_dashboard():
                 "count": month_count,
                 "approved": month_approved
             })
-
+        
         # 2. Leads por origem
         origins_data = {}
         for indication_doc in all_indications:
             indication_data = indication_doc.to_dict()
             origin = indication_data.get("origin", "website")
             origins_data[origin] = origins_data.get(origin, 0) + 1
-
+        
         leads_origin = [{"name": k, "value": v} for k, v in origins_data.items()]
-
+        
         # 3. Conversão por segmento
         segment_data = {}
         for indication_doc in all_indications:
             indication_data = indication_doc.to_dict()
             segment = indication_data.get("segment", "geral")
             status = indication_data.get("status", "pendente")
-
+            
             if segment not in segment_data:
                 segment_data[segment] = {"total": 0, "converted": 0}
-
+            
             segment_data[segment]["total"] += 1
             if status == "aprovado":
                 segment_data[segment]["converted"] += 1
-
+        
         conversion_by_segment = []
         for segment, data in segment_data.items():
             conversion_rate = (data["converted"] / data["total"] * 100) if data["total"] > 0 else 0
@@ -850,11 +847,11 @@ def get_admin_dashboard():
                 "converted": data["converted"],
                 "rate": conversion_rate
             })
-
+        
         # 4. Vendas mês a mês (comissões como proxy)
         sales_monthly = []
         for i in range(6):
-            month_date = datetime.now() - timedelta(days=30 * i)
+            month_date = datetime.now() - timedelta(days=30*i)
             month_sales = 0
             for commission_doc in all_commissions:
                 commission_data = commission_doc.to_dict()
@@ -869,41 +866,41 @@ def get_admin_dashboard():
                 "month": month_date.strftime("%b"),
                 "value": month_sales
             })
-
+        
         # 5. Top embaixadoras por volume de indicação
         all_users = list(db.collection("users").stream())
         ambassador_stats = {}
-
+        
         for user_doc in all_users:
             user_data = user_doc.to_dict()
             if user_data.get("role") == "embaixadora":
                 user_id = user_doc.id
                 user_name = user_data.get("name", "Sem nome")
-
+                
                 # Contar indicações desta embaixadora
                 user_indications = 0
                 for indication_doc in all_indications:
                     indication_data = indication_doc.to_dict()
                     if indication_data.get("ambassadorId") == user_id:
                         user_indications += 1
-
+                
                 if user_indications > 0:
                     ambassador_stats[user_name] = user_indications
-
+        
         # Ordenar por volume e pegar top 5
         top_ambassadors = sorted(ambassador_stats.items(), key=lambda x: x[1], reverse=True)[:5]
         top_ambassadors_data = [{"name": name, "indications": count} for name, count in top_ambassadors]
-
+        
         # 6. Embaixadoras ativas (últimos 60 dias)
         sixty_days_ago = datetime.now() - timedelta(days=60)
         active_ambassadors = 0
         total_ambassadors = 0
-
+        
         for user_doc in all_users:
             user_data = user_doc.to_dict()
             if user_data.get("role") == "embaixadora":
                 total_ambassadors += 1
-
+                
                 # Verificar se tem indicações nos últimos 60 dias
                 has_recent_activity = False
                 for indication_doc in all_indications:
@@ -917,13 +914,13 @@ def get_admin_dashboard():
                             if created_at >= sixty_days_ago:
                                 has_recent_activity = True
                                 break
-
+                
                 if has_recent_activity:
                     active_ambassadors += 1
-
+        
         indications_for_conversion = approved_indications + pending_indications
         active_percentage = (active_ambassadors / total_ambassadors * 100) if total_ambassadors > 0 else 0
-
+        
         dashboard_data["stats"] = {
             "totalUsers": users_count,
             "totalIndications": indications_count,
@@ -934,8 +931,7 @@ def get_admin_dashboard():
             "approvedIndications": approved_indications,
             "pendingIndications": pending_indications,
             "rejectedIndications": rejected_indications,
-            "approvalRate": round(
-                (approved_indications / indications_for_conversion * 100) if indications_for_conversion > 0 else 0, 2)
+            "approvalRate": round((approved_indications / indications_for_conversion * 100) if indications_for_conversion > 0 else 0, 2)
         }
         dashboard_data["charts"] = {
             "indicationsMonthly": list(reversed(indications_monthly)),
@@ -958,7 +954,7 @@ def get_admin_dashboard():
 def get_ambassador_dashboard():
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -986,7 +982,7 @@ def get_ambassador_dashboard():
         approved_indications = 0
         pending_indications = 0
         rejected_indications = 0
-
+        
         for doc in indications:
             indication_data = doc.to_dict()
             status = indication_data.get("status", "agendado")
@@ -1005,12 +1001,12 @@ def get_ambassador_dashboard():
         commissions = list(commissions_ref.stream())
 
         total_commissions = sum(doc.to_dict().get("value", 0) for doc in commissions)
-
+        
         # Comissões do mês atual
         current_month = datetime.now().month
         current_year = datetime.now().year
         monthly_commission = 0
-
+        
         for commission_doc in commissions:
             commission_data = commission_doc.to_dict()
             created_at = commission_data.get("createdAt")
@@ -1025,7 +1021,7 @@ def get_ambassador_dashboard():
         # 1. Indicações mês a mês (últimos 12 meses)
         monthly_indications = []
         for i in range(12):
-            month_date = datetime.now() - timedelta(days=30 * i)
+            month_date = datetime.now() - timedelta(days=30*i)
             month_count = 0
             for indication_doc in indications:
                 indication_data = indication_doc.to_dict()
@@ -1044,7 +1040,7 @@ def get_ambassador_dashboard():
         # 2. Comissões mês a mês (últimos 12 meses)
         monthly_commissions = []
         for i in range(12):
-            month_date = datetime.now() - timedelta(days=30 * i)
+            month_date = datetime.now() - timedelta(days=30*i)
             month_total = 0
             for commission_doc in commissions:
                 commission_data = commission_doc.to_dict()
@@ -1088,7 +1084,7 @@ def get_ambassador_dashboard():
         # 4. Performance mensal (últimos 5 meses)
         monthly_performance = []
         for i in range(5):
-            month_date = datetime.now() - timedelta(days=30 * i)
+            month_date = datetime.now() - timedelta(days=30*i)
             month_indications = 0
             for indication_doc in indications:
                 indication_data = indication_doc.to_dict()
@@ -1101,18 +1097,16 @@ def get_ambassador_dashboard():
                         month_indications += 1
             monthly_performance.append({
                 "month": month_date.strftime("%b"),
-                "total_indications": total_indications,
+               "total_indications": total_indications,
             })
 
         indications_for_conversion = approved_indications + pending_indications
-        print(
-            f"Ambassador Dashboard - Approved: {approved_indications}, Pending: {pending_indications}, Rejected: {rejected_indications}, Total Indications: {total_indications}")
+        print(f"Ambassador Dashboard - Approved: {approved_indications}, Pending: {pending_indications}, Rejected: {rejected_indications}, Total Indications: {total_indications}")
         print(f"Ambassador Dashboard - Indications for Conversion: {indications_for_conversion}")
         dashboard_data["stats"] = {
             "total_indications": total_indications_display,
             "approved_sales": approved_indications,
-            "conversion_rate": round(
-                (approved_indications / indications_for_conversion * 100) if indications_for_conversion > 0 else 0, 2),
+            "conversion_rate": round((approved_indications / indications_for_conversion * 100) if indications_for_conversion > 0 else 0, 2),
             "current_month_commission": monthly_commission,
             "total_commissions": total_commissions,
             "pending_indications": pending_indications,
@@ -1172,7 +1166,7 @@ def health():
 def update_commission(commission_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -1197,7 +1191,7 @@ def update_commission(commission_id):
 def delete_commission(commission_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -1215,12 +1209,13 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=False)
 
 
+
 @app.route("/users/<user_id>", methods=["PUT", "OPTIONS"])
 @jwt_required()
 def update_user(user_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)
@@ -1269,7 +1264,7 @@ def update_user(user_id):
 def delete_user(user_id):
     if request.method == "OPTIONS":
         return "", 200
-
+        
     try:
         if not db:
             return safe_jsonify({"error": "Erro de conexão com banco de dados"}, 500)

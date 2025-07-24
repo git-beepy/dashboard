@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from "../contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -186,7 +187,7 @@ const Dashboard = () => {
 
       // Vendas mês a mês (baseado em comissões reais)
       const salesData = {};
-
+      
       // Inicializar meses
       months.forEach((month, index) => {
         salesData[month] = 0;
@@ -224,10 +225,10 @@ const Dashboard = () => {
       };
     } else {
       // Processar dados para embaixadora
-      const userIndications = indications.filter(i =>
+      const userIndications = indications.filter(i => 
         i.ambassadorId === user.id || i.ambassador_id === user.id
       );
-      const userCommissions = commissions.filter(c =>
+      const userCommissions = commissions.filter(c => 
         c.ambassadorId === user.id || c.ambassador_id === user.id
       );
 
@@ -241,7 +242,7 @@ const Dashboard = () => {
       const monthlyCommission = userCommissions
         .filter(c => {
           const commissionDate = new Date(c.createdAt || c.created_at);
-          return commissionDate.getMonth() + 1 === currentMonth &&
+          return commissionDate.getMonth() + 1 === currentMonth && 
                  commissionDate.getFullYear() === currentYear;
         })
         .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
@@ -249,7 +250,7 @@ const Dashboard = () => {
       // Comissões por mês
       const commissionsData = [];
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
+      
       months.forEach((month, index) => {
         const monthCommissions = userCommissions
           .filter(c => {
@@ -257,7 +258,7 @@ const Dashboard = () => {
             return date.getMonth() === index;
           })
           .reduce((sum, c) => sum + (c.value || c.amount || 0), 0);
-
+        
         commissionsData.push({
           month,
           comissao: monthCommissions
@@ -313,7 +314,7 @@ const Dashboard = () => {
           origin: '',
           segment: ''
         });
-
+        
         // Aguardar um pouco para garantir que o backend processou tudo
         setTimeout(() => {
           console.log("Atualizando dashboard após criação de indicação...");
@@ -466,7 +467,7 @@ const Dashboard = () => {
     })) || [];
 
     const topAmbassadors = dashboardData?.charts?.topAmbassadors?.map(item => ({
-      embaixadora: item.name,
+      name: item.name,
       indicacoes: item.indications
     })) || [];
 
@@ -659,7 +660,7 @@ const Dashboard = () => {
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={topAmbassadors}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="embaixadora" />
+                  <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="indicacoes" fill={COLORS.purple} radius={[4, 4, 0, 0]} />
