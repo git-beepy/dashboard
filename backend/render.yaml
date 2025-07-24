@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: beepy-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false # Você precisará definir manualmente no painel do Render
+
