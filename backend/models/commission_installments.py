@@ -146,17 +146,6 @@ class CommissionInstallment:
         try:
             query = self.db.collection(self.collection_name)
 
-            # Aplicar filtros diretos com where
-            if filters:
-                status = filters.get("status")
-                ambassador_id = filters.get("ambassador_id")
-
-                if status:
-                    query = query.where("status", "==", status)
-
-                if ambassador_id:
-                    query = query.where("ambassador_id", "==", ambassador_id)
-
             # Ordenar por data de vencimento (requer índice no Firestore se combinado com where)
             query = query.order_by("due_date", direction=firestore.Query.DESCENDING)
 
@@ -172,6 +161,8 @@ class CommissionInstallment:
 
             # Filtros de mês/ano (aplicados manualmente em memória)
             if filters:
+                status = filters.get("status")
+                ambassador_id = filters.get("ambassador_id")
                 month = filters.get("month")
                 year = filters.get("year")
 
@@ -180,17 +171,30 @@ class CommissionInstallment:
                 if year:
                     year = int(year)
 
-                def matches_date(item):
+                def matches_all_filters(item):
+                    # Filtro por status
+                    if status and item.get("status") != status:
+                        return False
+                    
+                    # Filtro por embaixadora
+                    if ambassador_id and item.get("ambassador_id") != ambassador_id:
+                        return False
+                    
+                    # Filtro por data
                     due_date = item.get("due_date")
-                    if not isinstance(due_date, datetime):
-                        return False
-                    if month and due_date.month != month:
-                        return False
-                    if year and due_date.year != year:
-                        return False
+                    if month or year:
+                        if not isinstance(due_date, datetime):
+                            return False  # Não pode corresponder a um filtro de data se não tiver data
+                        
+                        if month and due_date.month != month:
+                            return False
+                        
+                        if year and due_date.year != year:
+                            return False
+                            
                     return True
 
-                installments = [i for i in installments if matches_date(i)]
+                installments = [i for i in installments if matches_all_filters(i)]
 
             return installments
 
