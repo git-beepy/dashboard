@@ -58,10 +58,10 @@ class CommissionInstallment:
                 }
                 
                 # Adicionar ao Firestore
-                doc_ref = self.db.collection(self.collection_name).add(installment_data)
-                installment_ids.append(doc_ref[1].id)
+                doc_ref, _ = self.db.collection(self.collection_name).add(installment_data)
+                installment_ids.append(doc_ref.id)
                 
-                print(f"Parcela {i} criada: R$ {installment_value} - Vencimento: {due_date.strftime('%d/%m/%Y')}")
+                print(f"Parcela {i} criada: R$ {installment_value} - Vencimento: {due_date.strftime(\'%d/%m/%Y\')}")
             
             return installment_ids
             
@@ -136,50 +136,72 @@ class CommissionInstallment:
     def get_all_installments(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Busca todas as parcelas com filtros opcionais
-        
+
         Args:
             filters: Dicionário com filtros (status, ambassador_id, month, year)
-            
+
         Returns:
             Lista de parcelas
         """
         try:
             query = self.db.collection(self.collection_name)
-            
-            if filters:
-                if "status" in filters and filters["status"]:
-                    query = query.where(field_path="status", op_string="==", value=filters["status"])
-                
-                if "ambassador_id" in filters and filters["ambassador_id"]:
-                    query = query.where(field_path="ambassador_id", op_string="==", value=filters["ambassador_id"])
-            
+
+            # Ordenar por data de vencimento (requer índice no Firestore se combinado com where)
             query = query.order_by("due_date", direction=firestore.Query.DESCENDING)
+
+            # Executar consulta
             docs = query.stream()
+
+            # Coletar documentos
             installments = []
-            
             for doc in docs:
-                installment_data = doc.to_dict()
-                installment_data["id"] = doc.id
-                installments.append(installment_data)
-            
-            # Aplicar filtros de data se necessário (Firestore tem limitações com múltiplos where)
+                data = doc.to_dict()
+                data["id"] = doc.id
+                installments.append(data)
+
+            # Filtros de mês/ano (aplicados manualmente em memória)
             if filters:
-                if "month" in filters and filters["month"] and "year" in filters and filters["year"]:
-                    month = int(filters["month"])
-                    year = int(filters["year"])
-                    installments = [i for i in installments if i["due_date"].month == month and i["due_date"].year == year]
-                elif "month" in filters and filters["month"]:
-                    month = int(filters["month"])
-                    installments = [i for i in installments if i["due_date"].month == month]
-                elif "year" in filters and filters["year"]:
-                    year = int(filters["year"])
-                    installments = [i for i in installments if i["due_date"].year == year]
-            
+                status = filters.get("status")
+                ambassador_id = filters.get("ambassador_id")
+                month = filters.get("month")
+                year = filters.get("year")
+
+                if month:
+                    month = int(month)
+                if year:
+                    year = int(year)
+
+                def matches_all_filters(item):
+                    # Filtro por status
+                    if status and item.get("status") != status:
+                        return False
+                    
+                    # Filtro por embaixadora
+                    if ambassador_id and item.get("ambassador_id") != ambassador_id:
+                        return False
+                    
+                    # Filtro por data
+                    due_date = item.get("due_date")
+                    if month or year:
+                        if not isinstance(due_date, datetime):
+                            return False  # Não pode corresponder a um filtro de data se não tiver data
+                        
+                        if month and due_date.month != month:
+                            return False
+                        
+                        if year and due_date.year != year:
+                            return False
+                            
+                    return True
+
+                installments = [i for i in installments if matches_all_filters(i)]
+
             return installments
-            
+
         except Exception as e:
             print(f"Erro ao buscar todas as parcelas: {str(e)}")
             return []
+
     
     def update_installment_status(self, installment_id: str, new_status: str, 
                                 payment_date: Optional[datetime] = None, 
@@ -309,4 +331,6 @@ class CommissionInstallment:
         except Exception as e:
             print(f"Erro ao gerar resumo das comissões: {str(e)}")
             return {}
+
+
 
