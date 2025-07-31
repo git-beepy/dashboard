@@ -1,0 +1,421 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { DollarSign, Users, TrendingUp, AlertTriangle, CheckCircle, Clock, Plus } from 'lucide-react';
+import { getOriginOptions, getOriginDisplayName } from '../../constants/origins';
+import { getSegmentOptions, getSegmentDisplayName } from '../../constants/segments';
+import axios from 'axios';
+
+const AmbassadorDashboard = () => {
+  const { user, token, API_BASE_URL } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [indications, setIndications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    client_name: '',
+    email: '',
+    phone: '',
+    origin: '',
+    segment: ''
+  });
+
+  useEffect(() => {
+    if (user?.role === 'ambassador') {
+      fetchDashboardData();
+      fetchIndications();
+    }
+  }, [user, token]);
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/dashboard/ambassador`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+
+      if (response.status === 200) {
+        setDashboardData(response.data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error);
+    }
+  };
+
+  const fetchIndications = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/indications`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+
+      if (response.status === 200) {
+        setIndications(response.data);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar indicações:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/indications`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.status === 201) {
+        setShowModal(false);
+        setFormData({
+          client_name: '',
+          email: '',
+          phone: '',
+          origin: '',
+          segment: ''
+        });
+        
+        // Recarregar dados
+        fetchIndications();
+        fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Erro ao criar indicação:', error);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      'agendado': { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      'aprovado': { color: 'bg-green-100 text-green-800', icon: CheckCircle },
+      'não aprovado': { color: 'bg-red-100 text-red-800', icon: AlertTriangle }
+    };
+
+    const config = statusConfig[status] || statusConfig['agendado'];
+    const Icon = config.icon;
+
+    return (
+      <Badge className={`${config.color} flex items-center gap-1`}>
+        <Icon size={12} />
+        {status}
+      </Badge>
+    );
+  };
+
+  const getInstallmentStatusBadge = (status) => {
+    const statusConfig = {
+      'pendente': { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      'pago': { color: 'bg-green-100 text-green-800', icon: CheckCircle },
+      'em_atraso': { color: 'bg-red-100 text-red-800', icon: AlertTriangle }
+    };
+
+    const config = statusConfig[status] || statusConfig['pendente'];
+    const Icon = config.icon;
+
+    return (
+      <Badge className={`${config.color} flex items-center gap-1`}>
+        <Icon size={12} />
+        {status.replace('_', ' ')}
+      </Badge>
+    );
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '-';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('pt-BR');
+  };
+
+  // Preparar dados para gráficos
+  const prepareChartData = () => {
+    const monthlyData = {};
+    
+    indications.forEach(indication => {
+      if (indication.installments) {
+        indication.installments.forEach(installment => {
+          const dueDate = new Date(installment.dueDate);
+          const monthKey = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = {
+              month: monthKey,
+              total: 0,
+              paid: 0,
+              pending: 0,
+              overdue: 0
+            };
+          }
+          
+          monthlyData[monthKey].total += installment.value;
+          
+          if (installment.status === 'pago') {
+            monthlyData[monthKey].paid += installment.value;
+          } else if (installment.status === 'em_atraso') {
+            monthlyData[monthKey].overdue += installment.value;
+          } else {
+            monthlyData[monthKey].pending += installment.value;
+          }
+        });
+      }
+    });
+
+    return Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'ambassador') {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">Acesso negado. Apenas embaixadores podem acessar esta página.</div>
+      </div>
+    );
+  }
+
+  const chartData = prepareChartData();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Meu Dashboard</h1>
+        <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
+          <Plus size={16} />
+          Nova Indicação
+        </Button>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Minhas Indicações</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{dashboardData?.totalIndications || 0}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total a Receber</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(dashboardData?.totalValue || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Já Recebido</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(dashboardData?.paidValue || 0)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Pendente</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(dashboardData?.pendingValue || 0)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráfico de Pagamentos por Mês */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Meus Pagamentos por Mês</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="paid" fill="#10b981" name="Recebido" />
+                <Bar dataKey="pending" fill="#f59e0b" name="Pendente" />
+                <Bar dataKey="overdue" fill="#ef4444" name="Em Atraso" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de Minhas Indicações */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Minhas Indicações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {indications.map((indication) => (
+              <div key={indication.id} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="font-semibold">{indication.client_name}</h3>
+                    <p className="text-sm text-gray-600">{indication.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(indication.status)}
+                  </div>
+                </div>
+
+                {/* Parcelas da Indicação */}
+                {indication.installments && indication.installments.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-2">Status das Parcelas:</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {indication.installments.map((installment) => (
+                        <div key={installment.id} className="border rounded p-2 text-sm">
+                          <div className="flex justify-between items-center mb-1">
+                            <span>Parcela {installment.installmentNumber}</span>
+                            {getInstallmentStatusBadge(installment.status)}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            <div>Valor: {formatCurrency(installment.value)}</div>
+                            <div>Vencimento: {formatDate(installment.dueDate)}</div>
+                            {installment.paidDate && (
+                              <div>Pago em: {formatDate(installment.paidDate)}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modal para Nova Indicação */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Nova Indicação</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="client_name">Nome do Cliente</Label>
+                <Input
+                  id="client_name"
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="origin">Origem</Label>
+                <Select value={formData.origin} onValueChange={(value) => setFormData({...formData, origin: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a origem" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getOriginOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="segment">Segmento</Label>
+                <Select value={formData.segment} onValueChange={(value) => setFormData({...formData, segment: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getSegmentOptions().map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" className="flex-1">
+                  Criar Indicação
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AmbassadorDashboard;
+

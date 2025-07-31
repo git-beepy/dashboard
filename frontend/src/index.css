@@ -1,0 +1,484 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Cores principais baseadas no design Beepy */
+  --beepy-orange: #F59E0B; /* Amarelo/laranja principal */
+  --beepy-green: #10B981; /* Verde para comissões */
+  --beepy-red: #EF4444; /* Vermelho para indicações */
+  --beepy-purple: #8B5CF6; /* Roxo para embaixadoras */
+  --beepy-blue: #3B82F6; /* Azul para clínicas */
+  --beepy-dark: #1F2937; /* Cinza escuro para sidebar */
+  --beepy-light-green: #D1FAE5; /* Verde claro para cards */
+  --beepy-light-yellow: #FEF3C7; /* Amarelo claro para cards */
+  --beepy-light-red: #FEE2E2; /* Vermelho claro para cards */
+  --beepy-light-purple: #EDE9FE; /* Roxo claro para cards */
+  --beepy-gray-50: #F9FAFB;
+  --beepy-gray-100: #F3F4F6;
+  --beepy-gray-200: #E5E7EB;
+  --beepy-gray-300: #D1D5DB;
+  --beepy-gray-400: #9CA3AF;
+  --beepy-gray-500: #6B7280;
+  --beepy-gray-600: #4B5563;
+  --beepy-gray-700: #374151;
+  --beepy-gray-800: #1F2937;
+  --beepy-gray-900: #111827;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--beepy-gray-50);
+}
+
+/* Sidebar com tema escuro baseado no design */
+.sidebar-dark {
+  background: linear-gradient(180deg, var(--beepy-gray-800) 0%, var(--beepy-gray-900) 100%);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Cards com cores específicas baseadas no design */
+.card-green {
+  background: linear-gradient(135deg, var(--beepy-green) 0%, #059669 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.card-yellow {
+  background: linear-gradient(135deg, var(--beepy-orange) 0%, #D97706 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+}
+
+.card-red {
+  background: linear-gradient(135deg, var(--beepy-red) 0%, #DC2626 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.card-purple {
+  background: linear-gradient(135deg, var(--beepy-purple) 0%, #7C3AED 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+/* Cards com fundo claro baseados no design */
+.card-light-green {
+  background-color: var(--beepy-light-green);
+  border-left: 4px solid var(--beepy-green);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card-light-yellow {
+  background-color: var(--beepy-light-yellow);
+  border-left: 4px solid var(--beepy-orange);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card-light-red {
+  background-color: var(--beepy-light-red);
+  border-left: 4px solid var(--beepy-red);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.card-light-purple {
+  background-color: var(--beepy-light-purple);
+  border-left: 4px solid var(--beepy-purple);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Botão principal laranja baseado no design */
+.btn-primary {
+  background: linear-gradient(135deg, var(--beepy-orange) 0%, #D97706 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Header com gradiente sutil */
+.header-gradient {
+  background: linear-gradient(90deg, var(--beepy-gray-50) 0%, var(--beepy-gray-100) 100%);
+  border-bottom: 1px solid var(--beepy-gray-200);
+}
+
+/* Cards de métricas com estilo profissional */
+.metric-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--beepy-gray-200);
+  transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Ícones coloridos */
+.icon-green { color: var(--beepy-green); }
+.icon-yellow { color: var(--beepy-orange); }
+.icon-red { color: var(--beepy-red); }
+.icon-purple { color: var(--beepy-purple); }
+.icon-blue { color: var(--beepy-blue); }
+
+/* Badges coloridos */
+.badge-green {
+  background-color: var(--beepy-light-green);
+  color: var(--beepy-green);
+  border: 1px solid var(--beepy-green);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-yellow {
+  background-color: var(--beepy-light-yellow);
+  color: var(--beepy-orange);
+  border: 1px solid var(--beepy-orange);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-red {
+  background-color: var(--beepy-light-red);
+  color: var(--beepy-red);
+  border: 1px solid var(--beepy-red);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-purple {
+  background-color: var(--beepy-light-purple);
+  color: var(--beepy-purple);
+  border: 1px solid var(--beepy-purple);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Estilo para tabelas */
+.table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--beepy-gray-200);
+}
+
+.table-header {
+  background-color: var(--beepy-gray-50);
+  border-bottom: 1px solid var(--beepy-gray-200);
+}
+
+.table-row:hover {
+  background-color: var(--beepy-gray-50);
+}
+
+/* Estilo para o histórico de indicações (baseado na imagem dashboard-home) */
+.history-table {
+  background: var(--beepy-gray-800);
+  color: white;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.history-table .table-header {
+  background: transparent;
+  border-bottom: 1px solid var(--beepy-gray-600);
+  color: var(--beepy-orange);
+}
+
+.history-table .table-row {
+  border-bottom: 1px solid var(--beepy-gray-700);
+}
+
+.history-table .table-row:hover {
+  background-color: var(--beepy-gray-700);
+}
+
+/* Status badges específicos */
+.status-agendada {
+  background-color: var(--beepy-orange);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-aprovado {
+  background-color: var(--beepy-green);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-nao-aprovado {
+  background-color: var(--beepy-red);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Gráficos com cores personalizadas */
+.recharts-pie-sector {
+  stroke: white;
+  stroke-width: 2;
+}
+
+.recharts-bar {
+  fill: var(--beepy-purple);
+}
+
+.recharts-line {
+  stroke: var(--beepy-blue);
+  stroke-width: 3;
+}
+
+/* Animações suaves */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--beepy-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--beepy-gray-300);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--beepy-gray-400);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .metric-card {
+    padding: 16px;
+  }
+  
+  .sidebar-dark {
+    width: 100%;
+    height: auto;
+  }
+  
+  .btn-primary {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* Estilo para formulários */
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--beepy-gray-300);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--beepy-orange);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--beepy-gray-700);
+}
+
+/* Estilo para modais */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para o login */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--beepy-gray-50) 0%, var(--beepy-gray-100) 100%);
+}
+
+.login-card {
+  background: white;
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-logo h1 {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--beepy-gray-900);
+  margin-bottom: 8px;
+}
+
+.login-logo p {
+  color: var(--beepy-gray-500);
+  font-size: 16px;
+}
+
+/* Melhorias de contraste para acessibilidade */
+.text-contrast-high {
+  color: var(--beepy-gray-900);
+}
+
+.text-contrast-medium {
+  color: var(--beepy-gray-700);
+}
+
+.text-contrast-low {
+  color: var(--beepy-gray-500);
+}
+
+/* Estilo para botões secundários */
+.btn-secondary {
+  background: white;
+  color: var(--beepy-gray-700);
+  border: 1px solid var(--beepy-gray-300);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--beepy-gray-50);
+  border-color: var(--beepy-gray-400);
+}
+
+/* Estilo para botões de ação */
+.btn-success {
+  background: var(--beepy-green);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-danger {
+  background: var(--beepy-red);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+  background: #DC2626;
+}
+
+.btn-warning {
+  background: var(--beepy-orange);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-warning:hover {
+  background: #D97706;
+}
+
