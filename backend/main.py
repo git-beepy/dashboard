@@ -363,7 +363,7 @@ def create_indication():
                     ambassador_name=ambassador_name,
                     client_name=client_name
                 )
-                print(f"Parcelas criadas para indicação {indication_data['id']}: {installment_ids}")
+                int(f"Parcelas criadas para indicação {indication_data['id']}: {installment_ids}")
             except Exception as e:
                 print(f"Erro ao criar parcelas: {str(e)}")
                 # Continuar mesmo se houver erro na criação das parcelas
@@ -1590,7 +1590,6 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
 
 
-
 @app.route("/commission-installments/<installment_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_commission_installment(installment_id):
@@ -1621,7 +1620,7 @@ def delete_commission_installment(installment_id):
 
         # Excluir a parcela
         db.collection("commission_installments").document(installment_id).delete()
-        
+
         print(f"Parcela {installment_id} excluída com sucesso pelo admin {current_user_id}")
         return safe_jsonify({"message": "Parcela excluída com sucesso"}, 200)
 
