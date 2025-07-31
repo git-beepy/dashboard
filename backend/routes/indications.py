@@ -156,13 +156,17 @@ def update_indication():
                 
                 # Criar 3 parcelas de comissão
                 for parcel in range(1, 4):
-                    due_date = indication.sale_approval_date + timedelta(days=(parcel - 1) * 30)
+                    due_date = indication.sale_approval_date
+                    if parcel == 2:
+                        due_date += timedelta(days=30)
+                    elif parcel == 3:
+                        due_date += timedelta(days=90)
                     
                     commission = Commission(
                         indication_id=indication.id,
                         ambassador_id=indication.ambassador_id,
                         parcel_number=parcel,
-                        amount=data.get("commission_amount", 0.0),
+                        amount=300.00, # Valor fixo de 300 reais por parcela
                         due_date=due_date,
                         payment_status='pendente',
                         created_at=datetime.now()
@@ -226,13 +230,17 @@ def update_indication_status():
             
             # Criar 3 parcelas de comissão
             for parcel in range(1, 4):
-                due_date = indication.sale_approval_date + timedelta(days=(parcel - 1) * 30)
+                due_date = indication.sale_approval_date
+                if parcel == 2:
+                    due_date += timedelta(days=30)
+                elif parcel == 3:
+                    due_date += timedelta(days=90)
                 
                 commission = Commission(
                     indication_id=indication.id,
                     ambassador_id=indication.ambassador_id,
                     parcel_number=parcel,
-                    amount=data.get("commission_amount", 0.0),
+                    amount=300.00, # Valor fixo de 300 reais por parcela
                     due_date=due_date,
                     payment_status='pendente',
                     created_at=datetime.now()
