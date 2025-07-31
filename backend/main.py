@@ -363,7 +363,8 @@ def create_indication():
                     ambassador_name=ambassador_name,
                     client_name=client_name
                 )
-                int(f"Parcelas criadas para indicação {indication_data['id']}: {installment_ids}")
+                print(f"Parcelas criadas para indicação {indication_data['id']}: {installment_ids}")
+                )int(f"Parcelas criadas para indicação {indication_data['id']}: {installment_ids}")
             except Exception as e:
                 print(f"Erro ao criar parcelas: {str(e)}")
                 # Continuar mesmo se houver erro na criação das parcelas
