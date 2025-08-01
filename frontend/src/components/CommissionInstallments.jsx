@@ -23,11 +23,9 @@ const CommissionInstallments = () => {
   const years = useMemo(() =>
     Array.from({ length: 5 }, (_, i) => currentYear - 2 + i), [currentYear]);
   useEffect(() => {
-    if (!user) return;
-
     fetchInstallments();
     fetchSummary();
-    if (user.role === 'admin') {
+    if (user?.role === 'admin') {
       fetchAmbassadors();
     }
   }, [filters, user]);
