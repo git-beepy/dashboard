@@ -672,7 +672,7 @@ def get_commissions():
         all_users = list(users_ref.stream())
         users_map = {}
         for user_doc in all_users:
-    users_map[user_doc.reference.id] = user_doc.to_dict()
+            users_map[user_doc.id] = user_doc.to_dict()
 
         for doc in docs:
             commission_data = doc.to_dict()
