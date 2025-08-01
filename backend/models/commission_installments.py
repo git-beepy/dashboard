@@ -111,6 +111,8 @@ class CommissionInstallment:
             Lista de parcelas
         """
         try:
+            print(f"Buscando parcelas para embaixadora: {ambassador_id}")
+            
             query = self.db.collection(self.collection_name).where(
                 field_path="ambassador_id", op_string="==", value=ambassador_id
             )
@@ -118,7 +120,14 @@ class CommissionInstallment:
             if status_filter:
                 query = query.where(field_path="status", op_string="==", value=status_filter)
             
-            query = query.order_by("due_date")
+            # Tentar ordenar por data de vencimento
+            try:
+                query = query.order_by("due_date")
+            except Exception as order_error:
+                print(f"Erro ao ordenar por due_date: {order_error}")
+                # Se não conseguir ordenar, continuar sem ordenação
+                pass
+                
             docs = query.stream()
             installments = []
             
@@ -126,7 +135,9 @@ class CommissionInstallment:
                 installment_data = doc.to_dict()
                 installment_data["id"] = doc.id
                 installments.append(installment_data)
+                print(f"Parcela encontrada: {doc.id} - Valor: {installment_data.get('value')} - Status: {installment_data.get('status')}")
             
+            print(f"Total de parcelas encontradas para embaixadora {ambassador_id}: {len(installments)}")
             return installments
             
         except Exception as e:
@@ -146,8 +157,25 @@ class CommissionInstallment:
         try:
             query = self.db.collection(self.collection_name)
 
-            # Ordenar por data de vencimento (requer índice no Firestore se combinado com where)
-            query = query.order_by("due_date", direction=firestore.Query.DESCENDING)
+            # Aplicar filtros diretos no Firestore quando possível
+            if filters:
+                status = filters.get("status")
+                ambassador_id = filters.get("ambassador_id")
+                
+                # Aplicar filtros que podem ser feitos no Firestore
+                if status:
+                    query = query.where(field_path="status", op_string="==", value=status)
+                
+                if ambassador_id:
+                    query = query.where(field_path="ambassador_id", op_string="==", value=ambassador_id)
+
+            # Ordenar por data de vencimento
+            try:
+                query = query.order_by("due_date", direction=firestore.Query.DESCENDING)
+            except Exception as order_error:
+                print(f"Erro ao ordenar por due_date: {order_error}")
+                # Se não conseguir ordenar, continuar sem ordenação
+                pass
 
             # Executar consulta
             docs = query.stream()
@@ -159,43 +187,44 @@ class CommissionInstallment:
                 data["id"] = doc.id
                 installments.append(data)
 
-            # Filtros de mês/ano (aplicados manualmente em memória)
+            # Aplicar filtros de data em memória (month/year)
             if filters:
-                status = filters.get("status")
-                ambassador_id = filters.get("ambassador_id")
                 month = filters.get("month")
                 year = filters.get("year")
 
                 if month:
-                    month = int(month)
-                if year:
-                    year = int(year)
-
-                def matches_all_filters(item):
-                    # Filtro por status
-                    if status and item.get("status") != status:
-                        return False
-                    
-                    # Filtro por embaixadora
-                    if ambassador_id and item.get("ambassador_id") != ambassador_id:
-                        return False
-                    
-                    # Filtro por data
-                    due_date = item.get("due_date")
-                    if month or year:
-                        if not isinstance(due_date, datetime):
-                            return False  # Não pode corresponder a um filtro de data se não tiver data
+                    try:
+                        month = int(month)
+                    except (ValueError, TypeError):
+                        month = None
                         
+                if year:
+                    try:
+                        year = int(year)
+                    except (ValueError, TypeError):
+                        year = None
+
+                if month or year:
+                    filtered_installments = []
+                    for item in installments:
+                        due_date = item.get("due_date")
+                        
+                        # Verificar se a data existe e é válida
+                        if not due_date or not isinstance(due_date, datetime):
+                            continue
+                        
+                        # Aplicar filtros de data
                         if month and due_date.month != month:
-                            return False
+                            continue
                         
                         if year and due_date.year != year:
-                            return False
+                            continue
                             
-                    return True
+                        filtered_installments.append(item)
+                    
+                    installments = filtered_installments
 
-                installments = [i for i in installments if matches_all_filters(i)]
-
+            print(f"Retornando {len(installments)} parcelas")
             return installments
 
         except Exception as e:
