@@ -61,7 +61,8 @@ class CommissionInstallment:
                 doc_ref, _ = self.db.collection(self.collection_name).add(installment_data)
                 installment_ids.append(doc_ref.id)
                 
-                print(f"Parcela {i} criada: R$ {installment_value} - Vencimento: {due_date.strftime("%d/%m/%Y")}")           
+                print(f"Parcela {i} criada: R$ {installment_value} - Vencimento: {due_date.strftime('%d/%m/%Y')}")
+            
             return installment_ids
             
         except Exception as e:
@@ -330,6 +331,4 @@ class CommissionInstallment:
         except Exception as e:
             print(f"Erro ao gerar resumo das comissões: {str(e)}")
             return {}
-
-
 
