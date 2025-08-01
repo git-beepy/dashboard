@@ -41,15 +41,16 @@ const Commissions = () => {
     }
   };
 
-  const fetchInstallments = async () => {
+  const fetchCommissions = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/commission-installments`, {
+      const response = await axios.get(`${API_BASE_URL}/commissions`, {
         withCredentials: true
       });
-      setInstallments(response.data.installments || []);
+      setCommissions(response.data);
     } catch (error) {
-      console.error("Erro ao buscar parcelas:", error);
-      setInstallments([]);
+      console.error('Erro ao buscar comissões:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -441,20 +442,13 @@ const Commissions = () => {
                   Valor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
-                  Parcelas
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                  Data Criação
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                  Última Atualização
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                  Ações
-                </th>
+                {user.role === 'admin' && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                    Ações
+                  </th>
+                )}
 
 
               </tr>
@@ -462,73 +456,66 @@ const Commissions = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {commissions.map((commission) => {
                 const indication = indications.find(ind => ind.id === commission.indicationId);
-                const commissionInstallments = installments.filter(inst => inst.commission_id === commission.id);
+
                 return (
-                  <React.Fragment key={commission.id}>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {commission.ambassadorName || 'N/A'}
+                  <tr key={commission.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {commission.ambassadorName || 'Nome não disponível'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {commission.ambassadorEmail || 'Email não disponível'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {indication?.client_name || indication?.clientName || indication?.name || commission.clientName || 'Cliente não informado'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {indication?.email || indication?.clientEmail || commission.clientEmail || ''}
+                      </div>
+                      {(indication?.status || commission.indicationStatus) && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Status: {indication?.status || commission.indicationStatus}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        R$ {(commission.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => user.role === 'admin' && toggleStatus(commission)}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(commission.status)} ${
+                          user.role === 'admin' ? 'cursor:pointer hover:opacity-80' : 'cursor:default'
+                        }`}
+                      >
+                        {getStatusText(commission.status)}
+                      </button>
+                    </td>
+                    {user.role === 'admin' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(commission)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(commission.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {indication ? indication.clientName : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        R$ {commission.value ? commission.value.toLocaleString(
-                          'pt-BR',
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        ) : '0,00'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {commissionInstallments.length > 0 ? (
-                          <ul className="list-disc list-inside">
-                            {commissionInstallments.map(inst => (
-                              <li key={inst.id} className="text-xs">
-                                Parcela {inst.parcel_number}: {inst.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} ({inst.status})
-                              </li>
-                            ))}
-                          </ul>
-                        ) : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(commission.status)}`}>
-                          {getStatusText(commission.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(commission.created_at).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(commission.updated_at).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {user.role === 'admin' && (
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleEdit(commission)}
-                              className="text-indigo-600 hover:text-indigo-900"
-                              title="Editar"
-                            >
-                              <Edit className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(commission.id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => toggleStatus(commission)}
-                              className={`${commission.status === 'paid' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
-                              title={commission.status === 'paid' ? 'Marcar como Pendente' : 'Marcar como Paga'}
-                            >
-                              <DollarSign className="h-5 w-5" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  </React.Fragment>
+                    )}
+
+
+                  </tr>
                 );
               })}
             </tbody>
