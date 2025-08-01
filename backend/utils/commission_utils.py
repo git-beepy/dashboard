@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 from typing import List
 from models import Commission
-
+from commissions_firestore import create_commission
 
 def create_commission_parcels(
     indication_id: str,
     ambassador_id: str,
     ambassador_name: str,
     client_name: str,
-    approval_date: datetime = None,
+    approval_date: datetime = None
 ) -> List[Commission]:
     """
     Cria 3 parcelas de comissão para uma indicação aprovada
@@ -23,19 +23,19 @@ def create_commission_parcels(
         due_date = approval_date + timedelta(days=30 * (i + 1))
 
         commission_data = {
-            "originalIndicationId": indication_id,
-            "ambassadorId": ambassador_id,
-            "ambassadorName": ambassador_name,
-            "clientName": client_name,
-            "parcelNumber": i + 1,
-            "value": base_value,
-            "dueDate": due_date,
-            "status": "pendente",
-            "createdAt": datetime.now(),
-            "updatedAt": datetime.now(),
+            'originalIndicationId': indication_id,
+            'ambassadorId': ambassador_id,
+            'ambassadorName': ambassador_name,
+            'clientName': client_name,
+            'parcelNumber': i + 1,
+            'value': base_value,
+            'dueDate': due_date,
+            'status': 'pendente',
+            'createdAt': datetime.now(),
+            'updatedAt': datetime.now()
         }
 
-        commission = Commission.from_dict(commission_data)
+        commission = create_commission(commission_data)
         parcels.append(commission)
 
     return parcels
