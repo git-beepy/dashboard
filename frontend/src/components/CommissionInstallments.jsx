@@ -18,6 +18,7 @@ const CommissionInstallments = () => {
   });
   const [summary, setSummary] = useState({});
   const [ambassadors, setAmbassadors] = useState([]);
+  const chartsData = generateChartsData();
   const isAdmin = user?.role === 'admin';
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const years = useMemo(() =>
@@ -255,7 +256,6 @@ const CommissionInstallments = () => {
       ambassadorChartData
     };
   };
-  const chartsData = generateChartsData();
 
   if (loading) {
     return (
