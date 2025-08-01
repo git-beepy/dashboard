@@ -327,4 +327,3 @@ def delete_indication(indication_id):
             'success': False,
             'message': f'Erro ao excluir indicação: {str(e)}'
         }), 500
-
