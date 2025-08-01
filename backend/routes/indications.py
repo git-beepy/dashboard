@@ -1,316 +1,205 @@
 from flask import Blueprint, request, jsonify
-from models.user import User, db
-from models.indication import Indication
-from models.commission import Commission
+from firebase_admin import firestore
 from datetime import datetime, timedelta
-from commission_installments import create_commission_installments
+from firestore_service import get_firestore_client
+from models import user_model, indication_model, commission_model
+from commission_utils import create_commission_parcels, save_commission_parcels
 
 indications_bp = Blueprint('indications', __name__)
-
+db = get_firestore_client()
 
 @indications_bp.route('/', methods=['GET'])
 def list_indications():
-    """
-    Listar todas as indicações ou filtrar por embaixadora
-    """
     try:
-        ambassador_id = request.args.get('ambassador_id', type=int)
+        ambassador_id = request.args.get('ambassador_id')
 
-        query = Indication.query
+        indications_ref = db.collection('indications')
+        query = indications_ref
 
         if ambassador_id:
-            query = query.filter_by(ambassador_id=ambassador_id)
+            query = query.where('ambassadorId', '==', ambassador_id)
 
-        indications = query.order_by(Indication.created_at.desc()).all()
+        docs = query.order_by('createdAt', direction=firestore.Query.DESCENDING).stream()
+        indications = [doc.to_dict() | {'id': doc.id} for doc in docs]
 
-        indications_list = []
-        for indication in indications:
-            indication_dict = indication.to_dict()
-            ambassador = User.query.get(indication.ambassador_id)
-            indication_dict['ambassador_name'] = ambassador.name if ambassador else 'Desconhecido'
-            indications_list.append(indication_dict)
+        for ind in indications:
+            user_doc = db.collection('users').document(ind.get('ambassadorId')).get()
+            ind['ambassadorName'] = user_doc.to_dict().get('name') if user_doc.exists else 'Desconhecido'
 
-        return jsonify({
-            'success': True,
-            'indications': indications_list
-        }), 200
-
+        return jsonify({'success': True, 'indications': indications}), 200
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao listar indicações: {str(e)}'
-        }), 500
-
+        return jsonify({'success': False, 'message': f'Erro ao listar indicações: {str(e)}'}), 500
 
 @indications_bp.route('/', methods=['POST'])
 def create_indication():
-    """
-    Criar nova indicação
-    """
     try:
         data = request.get_json()
 
-        required_fields = ['client_name', 'email', 'phone']
+        required_fields = ['clientName', 'email', 'phone']
         for field in required_fields:
             if not data.get(field):
-                return jsonify({
-                    'success': False,
-                    'message': f'Campo {field} é obrigatório'
-                }), 400
+                return jsonify({'success': False, 'message': f'Campo {field} é obrigatório'}), 400
 
-        ambassador_id = data.get('ambassador_id', 1)
+        ambassador_id = data.get('ambassadorId', 'default_user_id')  # Substitua pelo ID do usuário logado
 
-        ambassador = User.query.get(ambassador_id)
-        if not ambassador:
-            return jsonify({
-                'success': False,
-                'message': 'Embaixadora não encontrada'
-            }), 404
+        user_ref = db.collection('users').document(ambassador_id).get()
+        if not user_ref.exists:
+            return jsonify({'success': False, 'message': 'Embaixadora não encontrada'}), 404
 
-        new_indication = Indication(
-            ambassador_id=ambassador_id,
-            client_name=data['client_name'].strip(),
-            email=data['email'].strip(),
-            phone=data['phone'].strip(),
-            origin=data.get('origin', 'website').strip(),
-            segment=data.get('segment', 'outros').strip(),
-            notes=data.get('notes', '').strip(),
-            status='agendado',
-            converted=False,
-            created_at=datetime.now(),
-            updated_at=datetime.now()
-        )
+        now = datetime.now()
+        indication_data = {
+            'ambassadorId': ambassador_id,
+            'clientName': data['clientName'],
+            'email': data['email'],
+            'phone': data['phone'],
+            'origin': data.get('origin', 'website'),
+            'segment': data.get('segment', 'outros'),
+            'notes': data.get('notes', ''),
+            'status': 'agendado',
+            'converted': False,
+            'createdAt': now,
+            'updatedAt': now
+        }
 
-        db.session.add(new_indication)
-        db.session.commit()
+        new_ref = db.collection('indications').add(indication_data)
+        indication_data['id'] = new_ref[1].id
 
-        return jsonify({
-            'success': True,
-            'message': 'Indicação criada com sucesso',
-            'indication': new_indication.to_dict()
-        }), 201
-
+        return jsonify({'success': True, 'message': 'Indicação criada com sucesso', 'indication': indication_data}), 201
     except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao criar indicação: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': f'Erro ao criar indicação: {str(e)}'}), 500
 
-
-@indications_bp.route('/<int:indication_id>', methods=['PUT'])
+@indications_bp.route('/<indication_id>', methods=['PUT'])
 def update_indication(indication_id):
-    """
-    Atualizar uma indicação (dados do cliente ou status)
-    """
     try:
-        indication = Indication.query.get(indication_id)
-
-        if not indication:
-            return jsonify({
-                'success': False,
-                'message': 'Indicação não encontrada'
-            }), 404
+        ref = db.collection('indications').document(indication_id)
+        doc = ref.get()
+        if not doc.exists:
+            return jsonify({'success': False, 'message': 'Indicação não encontrada'}), 404
 
         data = request.get_json()
+        indication_data = doc.to_dict()
 
-        if 'client_name' in data:
-            indication.client_name = data['client_name'].strip()
-        if 'email' in data:
-            indication.email = data['email'].strip()
-        if 'phone' in data:
-            indication.phone = data['phone'].strip()
-        if 'origin' in data:
-            indication.origin = data['origin'].strip()
-        if 'segment' in data:
-            indication.segment = data['segment'].strip()
-        if 'notes' in data:
-            indication.notes = data['notes'].strip()
-        if 'converted' in data:
-            indication.converted = bool(data['converted'])
+        updates = {k: v for k, v in data.items() if k in [
+            'clientName', 'email', 'phone', 'origin', 'segment', 'notes', 'converted', 'status']}
+        updates['updatedAt'] = datetime.now()
 
-        if 'status' in data:
-            new_status = data['status']
-            if new_status not in ['agendado', 'aprovado', 'não aprovado']:
-                return jsonify({
-                    'success': False,
-                    'message': 'Status inválido'
-                }), 400
+        old_status = indication_data.get('status')
+        new_status = updates.get('status', old_status)
 
-            old_status = indication.status
-            indication.status = new_status
+        if old_status != 'aprovado' and new_status == 'aprovado':
+            updates['saleApprovalDate'] = datetime.now()
 
-            if new_status == 'aprovado' and old_status != 'aprovado':
-                indication.sale_approval_date = datetime.now()
-                db.session.commit()
+            ambassador_doc = db.collection('users').document(indication_data['ambassadorId']).get()
+            ambassador_data = ambassador_doc.to_dict()
+            ambassador_name = ambassador_data.get('name', '')
 
-                installments = create_commission_installments(
-                    indication_id=indication.id,
-                    ambassador_id=indication.ambassador_id,
-                    ambassador_name=User.query.get(indication.ambassador_id).name,
-                    client_name=indication.client_name,
-                    indication_date=indication.sale_approval_date
-                )
-                for installment in installments:
-                    db.session.add(Commission(
-                        indication_id=indication.id,
-                        ambassador_id=installment['ambassadorId'],
-                        parcel_number=installment['parcelNumber'],
-                        amount=installment['value'],
-                        due_date=installment['dueDate'],
-                        payment_status=installment['status'],
-                        created_at=datetime.now()
-                    ))
+            parcels = create_commission_parcels(
+                indication_id,
+                indication_data['ambassadorId'],
+                ambassador_name,
+                indication_data['clientName'],
+                updates['saleApprovalDate']
+            )
+            save_commission_parcels(parcels)
 
-            elif old_status == 'aprovado' and new_status != 'aprovado':
-                Commission.query.filter_by(indication_id=indication.id).delete()
-                indication.sale_approval_date = None
+        elif old_status == 'aprovado' and new_status != 'aprovado':
+            commissions_ref = db.collection('commissions').where('originalIndicationId', '==', indication_id).stream()
+            for commission_doc in commissions_ref:
+                db.collection('commissions').document(commission_doc.id).delete()
+            updates['saleApprovalDate'] = None
 
-        indication.updated_at = datetime.now()
-        db.session.commit()
+        ref.update(updates)
+        updated_doc = ref.get().to_dict()
+        updated_doc['id'] = indication_id
 
-        return jsonify({
-            'success': True,
-            'message': 'Indicação atualizada com sucesso',
-            'indication': indication.to_dict()
-        }), 200
-
+        return jsonify({'success': True, 'message': 'Indicação atualizada com sucesso', 'indication': updated_doc}), 200
     except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao atualizar indicação: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': f'Erro ao atualizar indicação: {str(e)}'}), 500
 
-
-@indications_bp.route('/<int:indication_id>/status', methods=['PUT'])
+@indications_bp.route('/<indication_id>/status', methods=['PUT'])
 def update_indication_status(indication_id):
-    """
-    Atualizar apenas o status de uma indicação (rota separada para compatibilidade)
-    """
     try:
-        indication = Indication.query.get(indication_id)
-
-        if not indication:
-            return jsonify({
-                'success': False,
-                'message': 'Indicação não encontrada'
-            }), 404
+        ref = db.collection('indications').document(indication_id)
+        doc = ref.get()
+        if not doc.exists:
+            return jsonify({'success': False, 'message': 'Indicação não encontrada'}), 404
 
         data = request.get_json()
         new_status = data.get('status')
-
         if new_status not in ['agendado', 'aprovado', 'não aprovado']:
-            return jsonify({
-                'success': False,
-                'message': 'Status inválido'
-            }), 400
+            return jsonify({'success': False, 'message': 'Status inválido'}), 400
 
-        old_status = indication.status
-        indication.status = new_status
-        indication.updated_at = datetime.now()
+        indication_data = doc.to_dict()
+        old_status = indication_data.get('status')
 
-        if new_status == 'aprovado' and old_status != 'aprovado':
-            indication.sale_approval_date = datetime.now()
-            db.session.commit()
+        updates = {
+            'status': new_status,
+            'updatedAt': datetime.now()
+        }
 
-            installments = create_commission_installments(
-                indication_id=indication.id,
-                ambassador_id=indication.ambassador_id,
-                ambassador_name=User.query.get(indication.ambassador_id).name,
-                client_name=indication.client_name,
-                indication_date=indication.sale_approval_date
+        if old_status != 'aprovado' and new_status == 'aprovado':
+            updates['saleApprovalDate'] = datetime.now()
+
+            ambassador_doc = db.collection('users').document(indication_data['ambassadorId']).get()
+            ambassador_data = ambassador_doc.to_dict()
+            ambassador_name = ambassador_data.get('name', '')
+
+            parcels = create_commission_parcels(
+                indication_id,
+                indication_data['ambassadorId'],
+                ambassador_name,
+                indication_data['clientName'],
+                updates['saleApprovalDate']
             )
-            for installment in installments:
-                db.session.add(Commission(
-                    indication_id=indication.id,
-                    ambassador_id=installment['ambassadorId'],
-                    parcel_number=installment['parcelNumber'],
-                    amount=installment['value'],
-                    due_date=installment['dueDate'],
-                    payment_status=installment['status'],
-                    created_at=datetime.now()
-                ))
+            save_commission_parcels(parcels)
 
         elif old_status == 'aprovado' and new_status != 'aprovado':
-            Commission.query.filter_by(indication_id=indication.id).delete()
-            indication.sale_approval_date = None
+            commissions_ref = db.collection('commissions').where('originalIndicationId', '==', indication_id).stream()
+            for commission_doc in commissions_ref:
+                db.collection('commissions').document(commission_doc.id).delete()
+            updates['saleApprovalDate'] = None
 
-        db.session.commit()
+        ref.update(updates)
+        updated_doc = ref.get().to_dict()
+        updated_doc['id'] = indication_id
 
-        return jsonify({
-            'success': True,
-            'message': 'Status atualizado com sucesso',
-            'indication': indication.to_dict()
-        }), 200
-
+        return jsonify({'success': True, 'message': 'Status atualizado com sucesso', 'indication': updated_doc}), 200
     except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao atualizar indicação: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': f'Erro ao atualizar status: {str(e)}'}), 500
 
-
-@indications_bp.route('/<int:indication_id>', methods=['GET'])
+@indications_bp.route('/<indication_id>', methods=['GET'])
 def get_indication(indication_id):
-    """
-    Obter detalhes de uma indicação específica
-    """
     try:
-        indication = Indication.query.get(indication_id)
+        doc = db.collection('indications').document(indication_id).get()
+        if not doc.exists:
+            return jsonify({'success': False, 'message': 'Indicação não encontrada'}), 404
 
-        if not indication:
-            return jsonify({
-                'success': False,
-                'message': 'Indicação não encontrada'
-            }), 404
+        indication = doc.to_dict()
+        indication['id'] = doc.id
 
-        indication_dict = indication.to_dict()
+        ambassador_doc = db.collection('users').document(indication['ambassadorId']).get()
+        indication['ambassadorName'] = ambassador_doc.to_dict().get('name', 'Desconhecido') if ambassador_doc.exists else 'Desconhecido'
 
-        ambassador = User.query.get(indication.ambassador_id)
-        indication_dict['ambassador_name'] = ambassador.name if ambassador else 'Desconhecido'
+        commissions = db.collection('commissions').where('originalIndicationId', '==', indication_id).stream()
+        indication['commissions'] = [c.to_dict() | {'id': c.id} for c in commissions]
 
-        commissions = Commission.query.filter_by(indication_id=indication.id).all()
-        indication_dict['commissions'] = [commission.to_dict() for commission in commissions]
-
-        return jsonify({
-            'success': True,
-            'indication': indication_dict
-        }), 200
-
+        return jsonify({'success': True, 'indication': indication}), 200
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao buscar indicação: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': f'Erro ao buscar indicação: {str(e)}'}), 500
 
-
-@indications_bp.route('/<int:indication_id>', methods=['DELETE'])
+@indications_bp.route('/<indication_id>', methods=['DELETE'])
 def delete_indication(indication_id):
-    """
-    Excluir uma indicação
-    """
     try:
-        indication = Indication.query.get(indication_id)
+        doc = db.collection('indications').document(indication_id).get()
+        if not doc.exists:
+            return jsonify({'success': False, 'message': 'Indicação não encontrada'}), 404
 
-        if not indication:
-            return jsonify({
-                'success': False,
-                'message': 'Indicação não encontrada'
-            }), 404
+        # Apagar comissões associadas
+        commissions = db.collection('commissions').where('originalIndicationId', '==', indication_id).stream()
+        for c in commissions:
+            db.collection('commissions').document(c.id).delete()
 
-        db.session.delete(indication)
-        db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'message': 'Indicação excluída com sucesso'
-        }), 200
-
+        db.collection('indications').document(indication_id).delete()
+        return jsonify({'success': True, 'message': 'Indicação excluída com sucesso'}), 200
     except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao excluir indicação: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': f'Erro ao excluir indicação: {str(e)}'}), 500
