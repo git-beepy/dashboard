@@ -154,6 +154,9 @@ def update_indication():
             if new_status == 'aprovado' and old_status != 'aprovado':
                 indication.sale_approval_date = datetime.now()
                 
+                db.session.commit()
+                indication_id_for_commission = indication.id
+                
                 # Criar 3 parcelas de comissão
                 base_value = 300.00
                 for parcel_num in range(1, 4):
@@ -166,7 +169,7 @@ def update_indication():
                         due_date += timedelta(days=90)
                     
                     commission = Commission(
-                        indication_id=indication.id,
+                        indication_id=indication_id_for_commission,
                         ambassador_id=indication.ambassador_id,
                         parcel_number=parcel_num,
                         amount=base_value,
@@ -230,6 +233,9 @@ def update_indication_status():
         if new_status == 'aprovado' and old_status != 'aprovado':
             indication.sale_approval_date = datetime.now()
             
+            db.session.commit()
+            indication_id_for_commission = indication.id
+            
             # Criar 3 parcelas de comissão
             base_value = 300.00
             for parcel_num in range(1, 4):
@@ -242,7 +248,7 @@ def update_indication_status():
                     due_date += timedelta(days=90)
                 
                 commission = Commission(
-                    indication_id=indication.id,
+                    indication_id=indication_id_for_commission,
                     ambassador_id=indication.ambassador_id,
                     parcel_number=parcel_num,
                     amount=base_value,
