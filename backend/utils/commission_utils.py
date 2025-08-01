@@ -31,4 +31,5 @@ def create_commission_parcels(indication_id: str, ambassador_id: str, ambassador
         commission = Commission(commission_data)
         parcels.append(commission)
 
-    return parcels
+    # Retornar lista de dicionários para persistência
+    return [p.to_dict() for p in parcels]

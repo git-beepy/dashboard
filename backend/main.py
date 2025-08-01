@@ -495,7 +495,7 @@ def update_indication_status(indication_id):
             existing_commissions = list(existing_commission_query.stream())
 
             for commission_doc in existing_commissions:
-                db.collection("commissions").document(commission_doc.reference.id).delete()
+                db.collection("commissions").document(commission_doc.id).delete()
                 print(f"Comissão removida para indicação rejeitada: {indication_id}")
 
         return safe_jsonify({"message": "Status da indicação atualizado com sucesso"}, 200)
@@ -672,7 +672,7 @@ def get_commissions():
         all_users = list(users_ref.stream())
         users_map = {}
         for user_doc in all_users:
-            users_map[user_doc.id] = user_doc.to_dict()
+    users_map[user_doc.reference.id] = user_doc.to_dict()
 
         for doc in docs:
             commission_data = doc.to_dict()
