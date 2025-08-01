@@ -1,12 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List
-
-class Commission:
-    def __init__(self, data: dict):
-        self.data = data
-
-    def to_dict(self):
-        return self.data
+from models import Commission
 
 def create_commission_parcels(indication_id: str, ambassador_id: str, ambassador_name: str, client_name: str, approval_date: datetime = None) -> List[Commission]:
     """
@@ -15,7 +9,7 @@ def create_commission_parcels(indication_id: str, ambassador_id: str, ambassador
     if approval_date is None:
         approval_date = datetime.now()
 
-    base_value = 300.00  # R$ 900,00 dividido em 3 parcelas
+    base_value = 300.00  # Valor da comissão dividido em 3 parcelas
     parcels = []
 
     for i in range(3):
@@ -34,6 +28,7 @@ def create_commission_parcels(indication_id: str, ambassador_id: str, ambassador
             'updatedAt': datetime.now()
         }
 
-        parcels.append(Commission(commission_data))
+        commission = Commission(commission_data)
+        parcels.append(commission)
 
     return parcels

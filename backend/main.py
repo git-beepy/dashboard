@@ -495,7 +495,7 @@ def update_indication_status(indication_id):
             existing_commissions = list(existing_commission_query.stream())
 
             for commission_doc in existing_commissions:
-                db.collection("commissions").document(commission_doc.id).delete()
+                db.collection("commissions").document(commission_doc.reference.id).delete()
                 print(f"Comissão removida para indicação rejeitada: {indication_id}")
 
         return safe_jsonify({"message": "Status da indicação atualizado com sucesso"}, 200)
