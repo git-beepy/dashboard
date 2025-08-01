@@ -22,40 +22,22 @@ const CommissionInstallments = () => {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const years = useMemo(() =>
     Array.from({ length: 5 }, (_, i) => currentYear - 2 + i), [currentYear]);
-  
   useEffect(() => {
     if (!user) return;
 
-    // Se o usuário não for admin, definimos o filtro de embaixador para o ID dele.
-    // Isso acionará uma nova busca de dados com o filtro correto.
-    if (!isAdmin && user.id && filters.ambassador_id !== user.id) {
-      setFilters(prevFilters => ({ ...prevFilters, ambassador_id: user.id }));
-      return; // Retorna para aguardar a atualização do estado e o re-render
-    }
-
-    // A busca de dados só prossegue se o usuário for admin ou se o filtro de embaixador já estiver definido
-    if (isAdmin || (filters.ambassador_id && !isAdmin)) {
-      fetchInstallments();
-      fetchSummary();
-    }
-    
-    if (isAdmin) {
+    fetchInstallments();
+    fetchSummary();
+    if (user.role === 'admin') {
       fetchAmbassadors();
     }
-  }, [filters, user, isAdmin]);
+  }, [filters, user]);
 
   const fetchInstallments = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      const paramsToUse = { ...filters };
 
-      // Garante que não-admins só possam ver suas próprias comissões
-      if (!isAdmin && user) {
-        paramsToUse.ambassador_id = user.id;
-      }
-
-      Object.entries(paramsToUse).forEach(([key, value]) => {
+      Object.entries(filters).forEach(([key, value]) => {
         if (value) {
           params.append(key, value);
         }
@@ -79,10 +61,8 @@ const CommissionInstallments = () => {
   const fetchSummary = async () => {
     try {
       const params = new URLSearchParams();
-      const ambassadorId = !isAdmin && user ? user.id : filters.ambassador_id;
-
-      if (ambassadorId) {
-        params.append('ambassador_id', ambassadorId);
+      if (filters.ambassador_id && isAdmin) {
+        params.append('ambassador_id', filters.ambassador_id);
       }
 
       const response = await axios.get(`${API_BASE_URL}/commission-installments/summary?${params}`, {
@@ -306,27 +286,26 @@ const CommissionInstallments = () => {
   return (
     <div className="p-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-          {isAdmin ? 'Comissões Parceladas' : 'Minhas Comissões'}
-        </h1>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-          <button
-            onClick={() => setShowCharts(!showCharts)}
-            className="bg-green-600 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 text-sm"
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>{showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}</span>
-          </button>
-          {isAdmin && (
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Comissões Parceladas</h1>
+        {isAdmin && (
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
             <button
-              onClick={checkOverdueInstallments}
-              className="bg-orange-600 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-orange-700 text-sm"
+              onClick={() => setShowCharts(!showCharts)}
+              className="bg-green-600 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 text-sm"
             >
-              <AlertTriangle className="h-4 w-4" />
-              <span>Verificar Atrasos</span>
+              <BarChart3 className="h-4 w-4" />
+              <span>{showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}</span>
             </button>
-          )}
-        </div>
+            {isAdmin && (
+              <button
+                onClick={checkOverdueInstallments}
+                className="bg-orange-600 text-white px-3 py-2 rounded-lg flex items-center justify-center space-x-2 hover:bg-orange-700 text-sm"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span>Verificar Atrasos</span>
+              </button>
+            )}
+          </div>)}
       </div>
 
       {/* Cards de resumo */}
@@ -392,29 +371,29 @@ const CommissionInstallments = () => {
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-        <div className="flex items-center mb-4">
-          <Filter className="h-5 w-5 text-gray-600 mr-2" />
-          <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos</option>
-              <option value="pendente">Pendente</option>
-              <option value="pago">Pago</option>
-              <option value="atrasado">Atrasado</option>
-            </select>
+      {/* Filtros - Apenas para Admin */}
+      {isAdmin && (
+        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+          <div className="flex items-center mb-4">
+            <Filter className="h-5 w-5 text-gray-600 mr-2" />
+            <h3 className="text-lg font-semibold text-gray-900">Filtros</h3>
           </div>
 
-          {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="atrasado">Atrasado</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Embaixadora</label>
               <select
@@ -430,41 +409,41 @@ const CommissionInstallments = () => {
                 ))}
               </select>
             </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Mês</label>
-            <select
-              value={filters.month}
-              onChange={(e) => setFilters({ ...filters, month: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos</option>
-              {months.map(month => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mês</label>
+              <select
+                value={filters.month}
+                onChange={(e) => setFilters({ ...filters, month: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                {months.map(month => (
+                  <option key={month.value} value={month.value}>
+                    {month.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ano</label>
-            <select
-              value={filters.year}
-              onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos</option>
-              {years.map(year => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ano</label>
+              <select
+                value={filters.year}
+                onChange={(e) => setFilters({ ...filters, year: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                {years.map(year => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Seção de Gráficos */}
       {showCharts && (
@@ -511,151 +490,146 @@ const CommissionInstallments = () => {
             </div>
 
             {/* Gráfico por Embaixadora */}
-            {isAdmin && (
-              <div className="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Embaixadoras por Valor</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartsData.ambassadorChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="ambassador" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [formatCurrency(value), 'Valor Total']} />
-                    <Bar dataKey="value" fill="#10B981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <div className="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Embaixadoras por Valor</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartsData.ambassadorChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="ambassador" angle={-45} textAnchor="end" height={100} />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [formatCurrency(value), 'Valor Total']} />
+                  <Bar dataKey="value" fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
 
       {/* Tabela de Parcelas */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Parcelas de Comissão ({installments.length})
-          </h3>
-        </div>
+      {isAdmin && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Parcelas de Comissão ({installments.length})
+            </h3>
+          </div>
 
-        {installments.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {isAdmin && (
+          {installments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Embaixadora
                     </th>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Parcela
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vencimento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  {isAdmin && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
+                      Cliente
                     </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {installments.map((installment) => (
-                  <tr key={installment.id}>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Parcela
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vencimento
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
                     {isAdmin && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ações
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {installments.map((installment) => (
+                    <tr key={installment.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {installment.ambassador_name}
                         </div>
                       </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {installment.client_name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {installment.installment_number}/3
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(installment.value)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatDate(installment.due_date)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(installment.status)}`}>
-                        {getStatusIcon(installment.status)}
-                        <span className="ml-1">{installment.status}</span>
-                      </span>
-                    </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          {installment.status !== 'pago' && (
-                            <button
-                              onClick={() => updateInstallmentStatus(installment.id, 'pago')}
-                              className="text-green-600 hover:text-green-900"
-                              title="Marcar como pago"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                          )}
-                          {installment.status === 'pago' && (
-                            <button
-                              onClick={() => updateInstallmentStatus(installment.id, 'pendente')}
-                              className="text-yellow-600 hover:text-yellow-900"
-                              title="Marcar como pendente"
-                            >
-                              <Clock className="h-4 w-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteInstallment(installment.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Excluir parcela"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {installment.client_name}
                         </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma parcela encontrada</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Não há parcelas de comissão com os filtros selecionados.
-            </p>
-          </div>
-        )}
-      </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {installment.installment_number}/3
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatCurrency(installment.value)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(installment.due_date)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(installment.status)}`}>
+                          {getStatusIcon(installment.status)}
+                          <span className="ml-1">{installment.status}</span>
+                        </span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            {installment.status !== 'pago' && (
+                              <button
+                                onClick={() => updateInstallmentStatus(installment.id, 'pago')}
+                                className="text-green-600 hover:text-green-900"
+                                title="Marcar como pago"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            {installment.status === 'pago' && (
+                              <button
+                                onClick={() => updateInstallmentStatus(installment.id, 'pendente')}
+                                className="text-yellow-600 hover:text-yellow-900"
+                                title="Marcar como pendente"
+                              >
+                                <Clock className="h-4 w-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => deleteInstallment(installment.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Excluir parcela"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma parcela encontrada</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Não há parcelas de comissão com os filtros selecionados.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
 export default CommissionInstallments;
-
 
 
