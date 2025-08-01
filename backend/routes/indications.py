@@ -2,11 +2,9 @@ from flask import Blueprint, request, jsonify
 from models.user import User, db
 from models.indication import Indication
 from models.commission import Commission
-from utils.commission_utils import create_commission_parcels
 from datetime import datetime, timedelta
 
 indications_bp = Blueprint('indications', __name__)
-
 
 @indications_bp.route('/', methods=['GET'])
 def list_indications():
@@ -41,7 +39,6 @@ def list_indications():
             'success': False,
             'message': f'Erro ao listar indicações: {str(e)}'
         }), 500
-
 
 @indications_bp.route('/', methods=['POST'])
 def create_indication():
@@ -102,7 +99,6 @@ def create_indication():
             'message': f'Erro ao criar indicação: {str(e)}'
         }), 500
 
-
 @indications_bp.route('/<int:indication_id>', methods=['PUT'])
 def update_indication():
     """
@@ -158,19 +154,21 @@ def update_indication():
             if new_status == 'aprovado' and old_status != 'aprovado':
                 indication.sale_approval_date = datetime.now()
 
-                # Obter nome da embaixadora
-                ambassador = User.query.get(indication.ambassador_id)
-                ambassador_name = ambassador.name if ambassador else 'Desconhecido'
+                # Criar 3 parcelas de comissão
+                for parcel in range(1, 4):
+                    due_date = indication.sale_approval_date + timedelta(days=(parcel - 1) * 30)
 
-                # Criar parcelas de comissão usando a função dedicada
-                parcels = create_commission_parcels(
-                    indication_id=indication.id,
-                    ambassador_id=indication.ambassador_id,
-                    ambassador_name=ambassador_name,
-                    client_name=indication.client_name,
-                    approval_date=indication.sale_approval_date
-                )
-                db.session.add_all(parcels)
+                    commission = Commission(
+                        indication_id=indication.id,
+                        ambassador_id=indication.ambassador_id,
+                        parcel_number=parcel,
+                        amount=data.get("commission_amount", 0.0),
+                        due_date=due_date,
+                        payment_status='pendente',
+                        created_at=datetime.now()
+                    )
+
+                    db.session.add(commission)
 
             # Se mudou de aprovado para outro status, remover comissões
             elif old_status == 'aprovado' and new_status != 'aprovado':
@@ -194,7 +192,6 @@ def update_indication():
             'success': False,
             'message': f'Erro ao atualizar indicação: {str(e)}'
         }), 500
-
 
 @indications_bp.route('/<int:indication_id>/status', methods=['PUT'])
 def update_indication_status():
@@ -227,19 +224,21 @@ def update_indication_status():
         if new_status == 'aprovado' and old_status != 'aprovado':
             indication.sale_approval_date = datetime.now()
 
-            # Obter nome da embaixadora
-            ambassador = User.query.get(indication.ambassador_id)
-            ambassador_name = ambassador.name if ambassador else 'Desconhecido'
+            # Criar 3 parcelas de comissão
+            for parcel in range(1, 4):
+                due_date = indication.sale_approval_date + timedelta(days=(parcel - 1) * 30)
 
-            # Criar parcelas de comissão usando a função dedicada
-            parcels = create_commission_parcels(
-                indication_id=indication.id,
-                ambassador_id=indication.ambassador_id,
-                ambassador_name=ambassador_name,
-                client_name=indication.client_name,
-                approval_date=indication.sale_approval_date
-            )
-            db.session.add_all(parcels)
+                commission = Commission(
+                    indication_id=indication.id,
+                    ambassador_id=indication.ambassador_id,
+                    parcel_number=parcel,
+                    amount=data.get("commission_amount", 0.0),
+                    due_date=due_date,
+                    payment_status='pendente',
+                    created_at=datetime.now()
+                )
+
+                db.session.add(commission)
 
         # Se mudou de aprovado para outro status, remover comissões
         elif old_status == 'aprovado' and new_status != 'aprovado':
@@ -260,7 +259,6 @@ def update_indication_status():
             'success': False,
             'message': f'Erro ao atualizar indicação: {str(e)}'
         }), 500
-
 
 @indications_bp.route('/<int:indication_id>', methods=['GET'])
 def get_indication(indication_id):
@@ -297,7 +295,6 @@ def get_indication(indication_id):
             'message': f'Erro ao buscar indicação: {str(e)}'
         }), 500
 
-
 @indications_bp.route('/<int:indication_id>', methods=['DELETE'])
 def delete_indication(indication_id):
     """
@@ -327,3 +324,4 @@ def delete_indication(indication_id):
             'success': False,
             'message': f'Erro ao excluir indicação: {str(e)}'
         }), 500
+
