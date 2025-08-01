@@ -1,37 +1,36 @@
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from firebase_admin import firestore
 from models.commission import Commission
 from models.indication import Indication
 from models.user import User
 
-def create_commission_parcels(indication_id: int, ambassador_id: int, ambassador_name: str, client_name: str, approval_date: datetime = None) -> List[Commission]:
+
+def create_commission_parcels(indication_id: str, ambassador_id: str, ambassador_name: str, client_name: str,
+                              approval_date: datetime = None) -> List[Commission]:
     """
-    Criar 3 parcelas de comissão para uma indicação aprovada
-    
+    Criar e salvar 3 parcelas de comissão para uma indicação aprovada (Firestore)
+
     Args:
-        indication_id: ID da indicação original
+        indication_id: ID da indicação
         ambassador_id: ID da embaixadora
         ambassador_name: Nome da embaixadora
         client_name: Nome do cliente
-        approval_date: Data de aprovação (padrão: agora)
-    
+        approval_date: Data de aprovação (opcional)
+
     Returns:
         Lista de objetos Commission criados
     """
     if approval_date is None:
         approval_date = datetime.now()
-    
-    base_value = 300.00  # R$ 900,00 dividido em 3 parcelas
-    parcels = []
-    
+
+    base_value = 300.00
+    commissions = []
+
     for i in range(3):
-        due_date = approval_date
-        if i == 1:  # 2ª parcela: 30 dias após a indicação
-            due_date += timedelta(days=30)
-        elif i == 2:  # 3ª parcela: 90 dias após a indicação
-            due_date += timedelta(days=90)
-        
-        commission_data = {
+        due_date = approval_date + timedelta(days=30 * (i + 1))
+
+        commission = Commission({
             'originalIndicationId': indication_id,
             'ambassadorId': ambassador_id,
             'ambassadorName': ambassador_name,
@@ -42,66 +41,83 @@ def create_commission_parcels(indication_id: int, ambassador_id: int, ambassador
             'status': 'pendente',
             'createdAt': datetime.now(),
             'updatedAt': datetime.now()
-        }
-        
-        commission = Commission(commission_data)
-        parcels.append(commission)
-    
-    return parcels
+        })
+
+        commissions.append(commission)
+
+    # Salvar no Firestore usando batch
+    db = firestore.client()
+    batch = db.batch()
+
+    for commission in commissions:
+        doc_ref = db.collection('commissions').document()
+        batch.set(doc_ref, commission.to_dict())
+
+    batch.commit()
+
+    return commissions
+
 
 def update_overdue_commissions() -> int:
     """
-    Atualizar status de comissões pendentes que estão em atraso
-    
+    Atualiza comissões vencidas no Firestore (status: 'atrasado')
+
     Returns:
         Número de comissões atualizadas
     """
-    from datetime import date
-    from models import db
-    
-    # Buscar comissões pendentes com data de vencimento passada
-    overdue_commissions = Commission.query.filter(
-        Commission.status == 'pendente',
-        Commission.due_date < date.today()
-    ).all()
-    
+    db = firestore.client()
+    today = datetime.today()
+
+    # Buscar comissões pendentes com dueDate anterior a hoje
+    pending_commissions = db.collection('commissions') \
+        .where('status', '==', 'pendente') \
+        .where('dueDate', '<', today).stream()
+
     updated_count = 0
-    for commission in overdue_commissions:
-        commission.status = 'atrasado'
-        commission.updated_at = datetime.now()
+    batch = db.batch()
+
+    for doc in pending_commissions:
+        batch.update(doc.reference, {
+            'status': 'atrasado',
+            'updatedAt': datetime.now()
+        })
         updated_count += 1
-    
-    db.session.commit()
+
+    if updated_count > 0:
+        batch.commit()
+
     return updated_count
 
-def get_commission_summary(ambassador_id: int = None) -> Dict[str, Any]:
+
+def get_commission_summary(ambassador_id: str = None) -> Dict[str, Any]:
     """
-    Obter resumo das comissões
-    
+    Obter resumo das comissões de uma embaixadora (Firestore)
+
     Args:
-        ambassador_id: ID da embaixadora (opcional, para filtrar)
-    
+        ambassador_id: ID da embaixadora (opcional)
+
     Returns:
         Dicionário com resumo das comissões
     """
-    query = Commission.query
-    
+    db = firestore.client()
+
+    query = db.collection('commissions')
     if ambassador_id:
-        query = query.filter_by(ambassador_id=ambassador_id)
-    
-    commissions = query.all()
-    
-    # Calcular totais
+        query = query.where('ambassadorId', '==', ambassador_id)
+
+    commissions = [Commission(doc.to_dict()) for doc in query.stream()]
+
     total_amount = sum(c.value for c in commissions)
     paid_amount = sum(c.value for c in commissions if c.status == 'pago')
     pending_amount = sum(c.value for c in commissions if c.status == 'pendente')
     overdue_amount = sum(c.value for c in commissions if c.status == 'atrasado')
-    
-    # Agrupar por mês
+
     monthly_summary = {}
     for commission in commissions:
-        month_key = commission.due_date.strftime('%Y-%m') if commission.due_date else 'unknown'
-        
+        if not commission.due_date:
+            continue
+        month_key = commission.due_date.strftime('%Y-%m')
+
         if month_key not in monthly_summary:
             monthly_summary[month_key] = {
                 'month': month_key,
@@ -110,16 +126,16 @@ def get_commission_summary(ambassador_id: int = None) -> Dict[str, Any]:
                 'pending': 0,
                 'overdue': 0
             }
-        
+
         monthly_summary[month_key]['total'] += commission.value
-        
+
         if commission.status == 'pago':
             monthly_summary[month_key]['paid'] += commission.value
         elif commission.status == 'pendente':
             monthly_summary[month_key]['pending'] += commission.value
         elif commission.status == 'atrasado':
             monthly_summary[month_key]['overdue'] += commission.value
-    
+
     return {
         'total_amount': total_amount,
         'paid_amount': paid_amount,
@@ -132,66 +148,72 @@ def get_commission_summary(ambassador_id: int = None) -> Dict[str, Any]:
         'monthly_breakdown': list(monthly_summary.values())
     }
 
-def get_ambassador_commissions(ambassador_id: int, status: str = None, month: int = None, year: int = None) -> List[Dict[str, Any]]:
+
+def get_ambassador_commissions(ambassador_id: str, status: str = None,
+                               month: int = None, year: int = None) -> List[Dict[str, Any]]:
     """
-    Obter comissões de uma embaixadora específica
-    
+    Obter comissões de uma embaixadora específica no Firestore
+
     Args:
         ambassador_id: ID da embaixadora
         status: Status das comissões (opcional)
-        month: Mês para filtrar (1-12, opcional)
+        month: Mês para filtrar (1–12, opcional)
         year: Ano para filtrar (opcional)
-    
+
     Returns:
         Lista de comissões
     """
-    query = Commission.query.filter_by(ambassador_id=ambassador_id)
-    
-    if status:
-        query = query.filter_by(status=status)
-    
-    # Filtrar por mês e ano se fornecidos
-    if month and year:
-        from sqlalchemy import extract
-        query = query.filter(
-            extract('month', Commission.due_date) == month,
-            extract('year', Commission.due_date) == year
-        )
-    elif year:
-        from sqlalchemy import extract
-        query = query.filter(extract('year', Commission.due_date) == year)
-    
-    commissions = query.order_by(Commission.due_date.asc()).all()
-    
-    return [commission.to_dict() for commission in commissions]
+    db = firestore.client()
 
-def calculate_expected_earnings(ambassador_id: int, start_date: datetime = None, end_date: datetime = None) -> Dict[str, float]:
+    query = db.collection('commissions').where('ambassadorId', '==', ambassador_id)
+
+    if status:
+        query = query.where('status', '==', status)
+
+    results = []
+    for doc in query.stream():
+        commission = Commission(doc.to_dict())
+
+        if commission.due_date:
+            if month and year:
+                if commission.due_date.month != month or commission.due_date.year != year:
+                    continue
+            elif year and commission.due_date.year != year:
+                continue
+
+        results.append(commission.to_dict())
+
+    return sorted(results, key=lambda x: x.get('dueDate'))
+
+
+def calculate_expected_earnings(ambassador_id: str, start_date: datetime = None,
+                                end_date: datetime = None) -> Dict[str, float]:
     """
-    Calcular ganhos esperados de uma embaixadora em um período
-    
+    Calcular ganhos esperados de uma embaixadora no Firestore
+
     Args:
         ambassador_id: ID da embaixadora
-        start_date: Data de início (opcional)
-        end_date: Data de fim (opcional)
-    
+        start_date: Data inicial (opcional)
+        end_date: Data final (opcional)
+
     Returns:
-        Dicionário com ganhos esperados
+        Dicionário com totais
     """
-    query = Commission.query.filter_by(ambassador_id=ambassador_id)
-    
+    db = firestore.client()
+    query = db.collection('commissions').where('ambassadorId', '==', ambassador_id)
+
+    commissions = [Commission(doc.to_dict()) for doc in query.stream()]
+
     if start_date:
-        query = query.filter(Commission.due_date >= start_date)
-    
+        commissions = [c for c in commissions if c.due_date and c.due_date >= start_date]
     if end_date:
-        query = query.filter(Commission.due_date <= end_date)
-    
-    commissions = query.all()
-    
+        commissions = [c for c in commissions if c.due_date and c.due_date <= end_date]
+
     total_expected = sum(c.value for c in commissions)
     total_paid = sum(c.value for c in commissions if c.status == 'pago')
     total_pending = sum(c.value for c in commissions if c.status == 'pendente')
     total_overdue = sum(c.value for c in commissions if c.status == 'atrasado')
-    
+
     return {
         'total_expected': total_expected,
         'total_paid': total_paid,
@@ -199,4 +221,3 @@ def calculate_expected_earnings(ambassador_id: int, start_date: datetime = None,
         'total_overdue': total_overdue,
         'payment_percentage': (total_paid / total_expected * 100) if total_expected > 0 else 0
     }
-
