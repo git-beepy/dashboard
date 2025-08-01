@@ -1590,6 +1590,7 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=port, debug=True)
 
 
+
 @app.route("/commission-installments/<installment_id>", methods=["DELETE", "OPTIONS"])
 @jwt_required()
 def delete_commission_installment(installment_id):
@@ -1620,10 +1621,11 @@ def delete_commission_installment(installment_id):
 
         # Excluir a parcela
         db.collection("commission_installments").document(installment_id).delete()
-
+        
         print(f"Parcela {installment_id} excluída com sucesso pelo admin {current_user_id}")
         return safe_jsonify({"message": "Parcela excluída com sucesso"}, 200)
 
     except Exception as e:
         print(f"Erro ao excluir parcela: {str(e)}")
         return safe_jsonify({"error": str(e)}, 500)
+
