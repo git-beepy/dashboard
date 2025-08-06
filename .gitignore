@@ -91,15 +91,18 @@ firestore-debug.log
 *.sqlite
 *.sqlite3
 
-# Secrets e configurações sensíveis
+# Secrets e configurações sensíveis (com exceções)
 *.json
 !package*.json
 !tsconfig*.json
+!vercel.json
+!firebase.json
 projeto-beepy-firebase-adminsdk-*.json
 
 # Temporary files
 *.tmp
 *.temp
 
+# Arquivos de ambiente e configs locais
 backend/.env
 beepy-api.env
