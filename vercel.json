@@ -8,15 +8,14 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/:path*",
+      "destination": "/index.html"
     }
   ],
   "env": {
     "VITE_API_BASE_URL": "https://beepy-api.onrender.com"
   }
 }
-
 
